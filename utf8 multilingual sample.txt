@@ -1,0 +1,516 @@
+हो। गए, उनका एक समय में बड़ा नाम था। पूरे देश में तालाब बनते थे बनाने वाले भी पूरे देश में थे। कहीं यह विद्या जाति के विद्यालय | सिखाई जाती थी तो कहीं यह जात से हट कर एक विशेष पांत भी जाती थी। बनाने वाले लोग कहीं एक जगह बसे मिलते थे तो कहीं -घूम कर इस काम को करते थे। I 국 घम गजधर एक सुन्दर शब्द है, तालाब बनाने वालों को आदर के साथ याद करने के लिए। राजस्थान के कुछ भागों में यह शब्द आज भी बाकी है। गजधर यानी जो गज को धारण करता है। और गज वही जो नापने के काम आता है। लेकिन फिर भी समाज ने इन्हें तीन हाथ की लोहे की छड़ लेकर घूमने वाला मिस्त्री नहीं माना। गजधर जो समाज को गहराई को नाप ले - उसे ऐसा दर्जा दिया गया है। गजधर वास्तुकार थे। गांव-समाज हो या नगर-समाज - उसके नव निर्माण की, रख-रखाव की ज़िम्मेदारी गजधर निभाते थे। नगर नियोजन से लेकर छोटे से छोटे निर्माण के काम गजधर के कधों पर टिके थे। वे योजना बनाते थे, कुल काम की लागत निकालते थे, काम में लगने वाली सारी सामग्री जुटाते थे और इस सबके बदले वे अपने जजमान से ऐसा कुछ नहीं मांग बैठते थे, जो वे दे न पाएं। लोग भी ऐसे थे कि उनसे जो कुछ बनता, वे गजधर को भेंट कर देते। काम पूरा होने पर पारिश्रमिक के अलावा गजधर को सम्मान ' भी मिलता था। सरोपा भेंट करना अब शायद सिर्फ सिख परंपरा में ही बचा समाज की गहराई नापते रहे हैं गुणाधर
+זוהי עובדה מבוססת שדעתו של הקורא תהיה מוסחת על ידי טקטס קריא כאשר הוא יביט בפריסתו. המטרה בשימוש ב-Lorem Ipsum הוא שיש לו פחות או יותר תפוצה של אותיות, בניגוד למלל '� יסוי � יסוי � יסוי', ונותן חזות קריאה יותר.הרבה הוצאות מחשבים ועורכי דפי אינטרנט משתמשים כיום ב-Lorem Ipsum כטקסט ברירת המחדל שלהם, וחיפוש של 'lorem ipsum' יחשוף אתרים רבים בראשית דרכם.גרסאות רבות נוצרו במהלך השנים, לעתים בשגגה לעיתים במכוון (זריקת בדיחות וכדומה).
+יש המון גרסאות זמינות לפסקאות של Lorem Ipsum. אבל רובם עברו שינויים בצורה זו או אחרת, על ידי השתלת הומור או מילים אקראיות שלא נראות אפילו מעט אמינות. אם אתה הולך להשתמש במקטעים של של Lorem Ipsum אתה צריך להיות בטוח שאין משהו מביך חבוי בתוך הטקסט. כל מחוללי הטקסט של Lorem Ipsum שנמצאים ברשת האינטרנט מכוונים לחזור על טקסטים מוגדרים מראש לפי הנדרש. וזה הופך אותנו למחוללי טקסט אמיתיים ראשונים באינטרנט. אנו משתמשים במילון עם מעל 200 ערכים בלטינית משולבים במבני משפטים על מנת לשוות לטקט מראה הגיוני. ולכן הטקסט של Lorem Ipsum לעולם לא יכיל טקסטים חוזרים, הומור, או מילים לא מאופייניות וכדומה
+בניגוד לטענה הרווחת, Lorem Ipsum אינו סתם טקסט רנדומלי. יש לו שורשים וחלקים מתוך הספרות הלטינית הקלאסית מאז 45 לפני הספירה. מה שהופך אותו לעתיק מעל 2000 שנה. ריצ'רד מקלינטוק, פרופסור לטיני בקולג' של המפדן-סידני בורג'יניה, חיפש את אחת המילים המעורפלות ביותר בלטינית - consectetur - מתוך פסקאות של Lorem Ipsum ודרך ציטוטים של המילה מתוך הספרות הקלאסית, הוא גילה מקור בלתי ניתן לערעור. Lorem Ipsum מגיע מתוך מקטע 1.10.32 ו- 1.10.33 של "de Finibus Bonorum et Malorum" (הקיצוניות של הטוב והרע) שנכתב על ידי קיקרו ב-45 לפני הספירה. ספר זה הוא מאמר על תאוריית האתיקה, שהיה מאוד מפורסם בתקופת הרנסנס. השורה הראשונה של "Lorem ipsum dolor sit amet", שמופיעה בטקסטים של Lorem Ipsum, באה משורה במקטע 1.10.32
+ הוא פשוט טקסט גולמי של תעשיית ההדפסה וההקלדה. Lorem Ipsum היה טקסט סטנדרטי עוד במאה ה-16, כאשר הדפסה לא ידועה לקחה מגש של דפוס ועירבלה אותו כדי ליצור סוג של ספר דגימה. ספר זה שרד לא רק חמש מאות שנים אלא גם את הקפיצה לתוך ההדפסה האלקטרונית, ונותר כמו שהוא ביסודו. ספר זה הפך פופולרי יותר בשנות ה-60 עם ההוצאה לאור של גליון פונטי המכיל פסקאות של Lorem Ipsum. ועוד יותר לאחרונה עם פרסום תוכנות המחשב האישי כגון Aldus page maker שמכיל גרסאות של Lorem Ipsum.
+ 什么是Lorem Ipsum?
+Lorem Ipsum，也称乱数假文或者哑元文本， 是印刷及排版领域所常用的虚拟文字。由于曾经一台匿名的打印机刻意打乱了一盒印刷字体从而造出一本字体样品书，Lorem Ipsum从西元15世纪起就被作为此领域的标准文本使用。它不仅延续了五个世纪，还通过了电子排版的挑战，其雏形却依然保存至今。在1960年代，”Leatraset”公司发布了印刷着Lorem Ipsum段落的纸张，从而广泛普及了它的使用。最近，计算机桌面出版软件”Aldus PageMaker”也通过同样的方式使Lorem Ipsum落入大众的视野。
+
+我们为何用它？
+无可否认，当读者在浏览一个页面的排版时，难免会被可阅读的内容所分散注意力。Lorem Ipsum的目的就是为了保持字母多多少少标准及平均的分配，而不是“此处有文本，此处有文本”，从而让内容更像可读的英语。如今，很多桌面排版软件以及网页编辑用Lorem Ipsum作为默认的示范文本，搜一搜“Lorem Ipsum”就能找到这些网站的雏形。这些年来Lorem Ipsum演变出了各式各样的版本，有些出于偶然，有些则是故意的（刻意的幽默之类的）。
+
+
+它起源于哪里？
+恰恰与流行观念相反，Lorem Ipsum并不是简简单单的随机文本。它追溯于一篇公元前45年的经典拉丁著作，从而使它有着两千多年的岁数。弗吉尼亚州Hampden-Sydney大学拉丁系教授Richard McClintock曾在Lorem Ipsum段落中注意到一个涵义十分隐晦的拉丁词语，“consectetur”，通过这个单词详细查阅跟其有关的经典文学著作原文，McClintock教授发掘了这个不容置疑的出处。Lorem Ipsum始于西塞罗(Cicero)在公元前45年作的“de Finibus Bonorum et Malorum”（善恶之尽）里1.10.32 和1.10.33章节。这本书是一本关于道德理论的论述，曾在文艺复兴时期非常流行。Lorem Ipsum的第一行”Lorem ipsum dolor sit amet..”节选于1.10.32章节。
+
+以下展示了自1500世纪以来使用的标准Lorem Ipsum段落，西塞罗笔下“de Finibus Bonorum et Malorum”章节1.10.32 ， 1.10.33的原著作，以及其1914年译自H. Rackham的英文版本。
+
+我能从哪里获取？
+如今互联网提供各种各样版本的Lorem Ipsum段落，但是大多数都多多少少出于刻意幽默或者其他随机插入的荒谬单词而被篡改过了。如果你想取用一段Lorem Ipsum，请确保段落中不含有令人尴尬的不恰当内容。所有网上的Lorem Ipsum生成器都倾向于在必要时重复预先准备的部分，然而这个生成器则是互联网上首个确切的生成器。它使用由超过200个拉丁单词所构造的词典，结合了几个模范句子结构，来生成看起来恰当的Lorem Ipsum。因此，生成出的结果无一例外免于重复，刻意的幽默，以及非典型的词汇等等。
+هناك حقيقة مثبتة منذ زمن طويل وهي أن المحتوى المقروء لصفحة ما سيلهي القارئ عن التركيز على الشكل الخارجي للنص أو شكل توضع الفقرات في الصفحة التي يقرأها. ولذلك يتم استخدام طريقة لوريم إيبسوم لأنها تعطي توزيعاَ طبيعياَ -إلى حد ما- للأحرف عوضاً عن استخدام "هنا يوجد محتوى نصي، هنا يوجد محتوى نصي" فتجعلها تبدو (أي الأحرف) وكأنها نص مقروء. العديد من برامح النشر المكتبي وبرامح تحرير صفحات الويب تستخدم لوريم إيبسوم بشكل إفتراضي كنموذج عن النص، وإذا قمت بإدخال "lorem ipsum" في أي محرك بحث ستظهر العديد من المواقع الحديثة العهد في نتائج البحث. على مدى السنين ظهرت نسخ جديدة ومختلفة من نص لوريم إيبسوم، أحياناً عن طريق الصدفة، وأحياناً عن عمد كإدخال بعض العبارات الفكاهية إليها.
+
+ما هو "لوريم إيبسوم" ؟
+لوريم إيبسوم(Lorem Ipsum) هو ببساطة نص شكلي (بمعنى أن الغاية هي الشكل وليس المحتوى) ويُستخدم في صناعات المطابع ودور النشر. كان لوريم إيبسوم ولايزال المعيار للنص الشكلي منذ القرن الخامس عشر عندما قامت مطبعة مجهولة برص مجموعة من الأحرف بشكل عشوائي أخذتها من نص، لتكوّن كتيّب بمثابة دليل أو مرجع شكلي لهذه الأحرف. خمسة قرون من الزمن لم تقضي على هذا النص، بل انه حتى صار مستخدماً وبشكله الأصلي في الطباعة والتنضيد الإلكتروني. انتشر بشكل كبير في ستينيّات هذا القرن مع إصدار رقائق "ليتراسيت" (Letraset) البلاستيكية تحوي مقاطع من هذا النص، وعاد لينتشر مرة أخرى مؤخراَ مع ظهور برامج النشر الإلكتروني مثل "ألدوس بايج مايكر" (Aldus PageMaker) والتي حوت أيضاً على نسخ من نص لوريم إيبسوم.
+
+أين أجده ؟
+هنالك العديد من الأنواع المتوفرة لنصوص لوريم إيبسوم، ولكن الغالبية تم تعديلها بشكل ما عبر إدخال بعض النوادر أو الكلمات العشوائية إلى النص. إن كنت تريد أن تستخدم نص لوريم إيبسوم ما، عليك أن تتحقق أولاً أن ليس هناك أي كلمات أو عبارات محرجة أو غير لائقة مخبأة في هذا النص. بينما تعمل جميع مولّدات نصوص لوريم إيبسوم على الإنترنت على إعادة تكرار مقاطع من نص لوريم إيبسوم نفسه عدة مرات بما تتطلبه الحاجة، يقوم مولّدنا هذا باستخدام كلمات من قاموس يحوي على أكثر من 200 كلمة لا تينية، مضاف إليها مجموعة من الجمل النموذجية، لتكوين نص لوريم إيبسوم ذو شكل منطقي قريب إلى النص الحقيقي. وبالتالي يكون النص الناتح خالي من التكرار، أو أي كلمات أو عبارات غير لائقة أو ما شابه. وهذا ما يجعله أول مولّد نص لوريم إيبسوم حقيقي على 
+خلافاَ للإعتقاد السائد فإن لوريم إيبسوم ليس نصاَ عشوائياً، بل إن له جذور في الأدب اللاتيني الكلاسيكي منذ العام 45 قبل الميلاد، مما يجعله أكثر من 2000 عام في القدم. قام البروفيسور "ريتشارد ماك لينتوك" (Richard McClintock) وهو بروفيسور اللغة اللاتينية في جامعة هامبدن-سيدني في فيرجينيا بالبحث عن أصول كلمة لاتينية غامضة في نص لوريم إيبسوم وهي "consectetur"، وخلال تتبعه لهذه الكلمة في الأدب اللاتيني اكتشف المصدر الغير قابل للشك. فلقد اتضح أن كلمات نص لوريم إيبسوم تأتي من الأقسام 1.10.32 و 1.10.33 من كتاب "حول أقاصي الخير والشر" (de Finibus Bonorum et Malorum) للمفكر شيشيرون (Cicero) والذي كتبه في عام 45 قبل الميلاد. هذا الكتاب هو بمثابة مقالة علمية مطولة في نظرية الأخلاق، وكان له شعبية كبيرة في عصر النهضة. السطر الأول من لوريم إيبسوم "Lorem ipsum dolor sit amet.." يأتي من سطر في القسم 1.20.32 من هذا الكتاب.
+
+للمهتمين قمنا بوضع نص لوريم إبسوم القياسي والمُستخدم منذ القرن الخامس عشر في الأسفل. وتم أيضاً توفير الأقسام 1.10.32 و 1.10.33 من "حول أقاصي الخير والشر" (de Finibus Bonorum et Malorum) لمؤلفه شيشيرون (Cicero) بصيغها الأصلية، مرفقة بالنسخ الإنكليزية لها والتي قام بترجمتها هـ.راكهام (H. Rackham) في عام 1914.
+
+Kas yra Lorem Ipsum?
+Lorem ipsum - tai fiktyvus tekstas naudojamas spaudos ir grafinio dizaino pasaulyje jau nuo XVI a. pradžios. Lorem Ipsum tapo standartiniu fiktyviu tekstu, kai nežinomas spaustuvininkas atsitiktine tvarka išdėliojo raides atspaudų prese ir tokiu būdu sukūrė raidžių egzempliorių. Šis tekstas išliko beveik nepasikeitęs ne tik penkis amžius, bet ir įžengė i kopiuterinio grafinio dizaino laikus. Jis išpopuliarėjo XX a. šeštajame dešimtmetyje, kai buvo išleisti Letraset lapai su Lorem Ipsum ištraukomis, o vėliau -leidybinė sistema AldusPageMaker, kurioje buvo ir Lorem Ipsum versija.
+
+Kam jis naudojamas?
+Jau seniai žinoma, kad vertinant dizainą ir kompoziciją, blaško skaitomas tekstas. Tad Lorem Ipsum naudojamas tam, kad daugiau ar mažiau normalizuotų raidžių paskirstymą vietoje paprasto dubliavimo: „Tekstas tekstas tekstas tekstas...“. Daugelis leidybinių sistemų programų, o taip pat ir Hiperteksto kalbos redaktoriai naudoja Lorem Ipsum kaip demonstracinę numatyto teksto versiją, todel žodžių „Lorem Ipsum“ internetinė paieška parodo daug tinklalapių kurie yra dar besikuriantys. Egzistuoja ne mažai įvairių Lorem Ipsum versijų. Kai kurios iš jų buvo sukurtos per klaidą, kitos - tyčia (pvz. jumoristinės).
+
+
+Iš kur jis atsirado?
+Daug kas galvoja, kad Lorem Ipsum - tai vien tik atsitiktinai surinktas tekstas, bet taip nėra. Jo šaknis galima rasti klasikiniame Lotynų kalba parašytame kūrinyje, išleistame 45 pr. m. e., t.y. prieš du tūkstančius metų. Richard McClintock, lotynų kalbos profesorius Hampden-Sydney (JAV) koledže, išrinko vieną iš neaiškesnių žodžių iš Lorem Ipsum ištraukos - „consectetur“, ir ėmėsi ieškoti jo klasikinėje lotynų kalbos literatūroje. Tokiu būdu jis rado neabejotiną šio žodžio ir Lorem Ipsum šaltinį knygos „de Finibus Bonorum et Malorum“ (Apie gėrio ir blogio ribas) 1.10.32 ir 1.10.33 pastraipose. Kūrinio autorius – Ciceronas, parašęs jį 45 pr. m. e. Šis etikos teorijos traktatas buvo labai populiarus Renesanso laikais. Pirmoji Lorem Ipsum teksto eilutė, „Lorem ipsum dolor sit amet..“ sukurta remiantis 1.10.32 pastraipa.
+
+Klasikinį Lorem Ipsum teksto pavyzdį, naudojamą nuo XVI a., galima pamatyti svetainės apačioje. Taip pat pateikiamos 1.10.32 ir 1.10.33 pastraipos is Cicerono knygos „de Finibus Bonorum et Malorum“, ir jų vertimai į anglų kalbą H.Rackham 1914m.
+
+Kur jį gauti?
+Yra daug įvarių Lorem Ipsum variantų, bet daugelis jų buvo vienokiu ar kitokiu būdu modifikuoti, pvz. jumoristiniai intarpai arba žodžiai, nė kiek nepanasūs i lotynų kalbą. Jeigu Jums reikia Lorem Ipsum teksto rimtam projektui, Jūs tikriausiai nenorėtumėte viduryje eilutės kokio nors trikdančio išsireiškimo. Visi kiti Lorem Ipsum teksto eilučių generatoriai dažniausiai tik kartoja tą patį tekstą, kol užpildo reikiamus tarpus. Todėl čia siūlomas teksto eilučių generatorius yra vienintelis tikras Lorem Ipsum teksto generatorius. Jame naudojamas žodynas iš daugiau nei 200 lotynų kalbos žodžių, o taip pat keletas ištisų sakinių modelių. Taip surinktas Lorem Ipsum teksto variantas atrodo tikroviškai, nesikartoja, ir jame nėra „neįmanomų“ žodžių.
+Ce este Lorem Ipsum?
+Lorem Ipsum este pur şi simplu o machetă pentru text a industriei tipografice. Lorem Ipsum a fost macheta standard a industriei încă din secolul al XVI-lea, când un tipograf anonim a luat o planşetă de litere şi le-a amestecat pentru a crea o carte demonstrativă pentru literele respective. Nu doar că a supravieţuit timp de cinci secole, dar şi a facut saltul în tipografia electronică practic neschimbată. A fost popularizată în anii '60 odată cu ieşirea colilor Letraset care conţineau pasaje Lorem Ipsum, iar mai recent, prin programele de publicare pentru calculator, ca Aldus PageMaker care includeau versiuni de Lorem Ipsum.
+
+De ce îl folosim?
+E un fapt bine stabilit că cititorul va fi sustras de conţinutul citibil al unei pagini atunci când se uită la aşezarea în pagină. Scopul utilizării a Lorem Ipsum, este acela că are o distribuţie a literelor mai mult sau mai puţin normale, faţă de utilizarea a ceva de genul "Conţinut aici, conţinut acolo", făcându-l să arate ca o engleză citibilă. Multe pachete de publicare pentru calculator şi editoare de pagini web folosesc acum Lorem Ipsum ca model standard de text, iar o cautare de "lorem ipsum" va rezulta în o mulţime de site-uri web în dezvoltare. Pe parcursul anilor, diferite versiuni au evoluat, uneori din intâmplare, uneori intenţionat (infiltrându-se elemente de umor sau altceva de acest gen).
+
+
+De unde provine?
+În ciuda opiniei publice, Lorem Ipsum nu e un simplu text fără sens. El îşi are rădăcinile într-o bucată a literaturii clasice latine din anul 45 î.e.n., făcând-o să aibă mai bine de 2000 ani. Profesorul universitar de latină de la colegiul Hampden-Sydney din Virginia, Richard McClintock, a căutat în bibliografie unul din cele mai rar folosite cuvinte latine "consectetur", întâlnit în pasajul Lorem Ipsum, şi căutând citate ale cuvântului respectiv în literatura clasică, a descoperit la modul cel mai sigur sursa provenienţei textului. Lorem Ipsum provine din secţiunile 1.10.32 şi 1.10.33 din "de Finibus Bonorum et Malorum" (Extremele Binelui şi ale Răului) de Cicerone, scrisă în anul 45 î.e.n. Această carte este un tratat în teoria eticii care a fost foarte popular în perioada Renasterii. Primul rând din Lorem Ipsum, "Lorem ipsum dolor sit amet...", a fost luat dintr-un rând din secţiunea 1.10.32.
+
+Pasajul standard de Lorem Ipsum folosit încă din secolul al XVI-lea este reprodus mai jos pentru cei interesaţi. Secţiunile 1.10.32 şi 1.10.33 din "de Finibus Bonorum et Malorum" de Cicerone sunt de asemenea reproduse în forma lor originală, impreună cu versiunile lor în engleză din traducerea de către H. Rackham din 1914.
+
+De unde pot sa-l iau şi eu?
+Există o mulţime de variaţii disponibile ale pasajelor Lorem Ipsum, dar majoritatea lor au suferit alterări într-o oarecare măsură prin infiltrare de elemente de umor, sau de cuvinte luate aleator, care nu sunt câtuşi de puţin credibile. Daca vreţi să folosiţi un pasaj de Lorem Ipsum, trebuie să vă asiguraţi că nu conţine nimic stânjenitor ascuns printre randuri. Toate generatoarele de Lorem Ipsum de pe Internet tind să repete bucăţi de text în funcţie de necesitate, astfel făcându-l pe acesta primul generator adevarat de pe Internet. El utilizează un dicţionar de peste 200 cuvinte din latina, combinate cu o cantitate considerabilă de modele de structuri de propoziţii, pentru a genera Lorem Ipsum care arată decent. Astfel, Lorem Ipsum-ul generat nu conţine repetiţii, infiltrări de elemente de umor sau de cuvinte non-caracteristice, etc.
+Čo je to Lorem Ipsum?
+Lorem Ipsum je fiktívny text, používaný pri návrhu tlačovín a typografie. Lorem Ipsum je štandardným výplňovým textom už od 16. storočia, keď neznámy tlačiar zobral sadzobnicu plnú tlačových znakov a pomiešal ich, aby tak vytvoril vzorkovú knihu. Prežil nielen päť storočí, ale aj skok do elektronickej sadzby, a pritom zostal v podstate nezmenený. Spopularizovaný bol v 60-tych rokoch 20.storočia, vydaním hárkov Letraset, ktoré obsahovali pasáže Lorem Ipsum, a neskôr aj publikačným softvérom ako Aldus PageMaker, ktorý obsahoval verzie Lorem Ipsum.
+
+Prečo ho používame?
+Je dávno známe, že ak je zrozumiteľný obsah stránky, na ktorej rozloženie sa čitateľ díva, jeho pozornosť je rozptýlená. Dôvodom použitia Lorem Ipsum je fakt, že má viacmenej normálne rozloženie písmen, takže oproti použitiu 'Sem príde text, sem príde text' sa obsah vypĺňanej oblasti na stránke viac podobá na skutočný text. Mnohé balíky publikačného softvéru a editorov webových stránok už používajú Lorem Ipsum ako predvolený výplňový text a keď dáte na internete vyhľadávať 'lorem ipsum', objavíte mnoho webových stránok v rannom štádiu ich vzniku. V minulých rokoch sa objavilo mnoho verzií tohto textu, niekedy náhodou, niekedy úmyselne (pridaný humor a podobne).
+
+
+Odkiaľ pochádza?
+Napriek všeobecnému presvedčeniu nie je Lorem Ipsum len náhodný text. Jeho korene sú v časti klasickej latinskej literatúry z roku 45 pred n.l., takže má viac ako 2000 rokov. Richard McClintock, profesor latinčiny na Hampden-Sydney College vo Virgínii, hľadal jedno z menej určitých latinských slov, consectetur, z pasáže Lorem Ipsum, a ako vyhľadával výskyt tohto slova v klasickej literatúre, objavil jeho nepochybný zdroj. Lorem Ipsum pochádza z odsekov 1.10.32 a 1.10.33 Cicerovho diela "De finibus bonorum et malorum" (O najvyššom dobre a zle), napísaného v roku 45 pred n.l. Táto kniha je pojednaním o teórii etiky, a bola veľmi populárna v renesancii. Prvý riadok Lorem Ipsum, "Lorem ipsum dolor sit amet..", je z riadku v odseku 1.10.32.
+
+Štandardný úsek Lorem Ipsum, používaný od 16. storočia, je pre zaujímavosť uvedený nižšie. Odseky 1.10.32 a 1.10.33 z "De finibus bonorum et malorum" od Cicera tu sú tiež uvedené v ich presnom pôvodnom tvare, doplnené anglickými verziami z roku 1914, v preklade H. Rackhama.
+
+Kde ho môžem získať?
+Existuje mnoho podôb pasáží Lorem Ipsum, ale väčšina trpela rôznymi zmenami, vložením humoru, alebo náhodných slov, ktoré nevyzerajú ani trocha dôveryhodne. Ak sa chystáte použiť pasáž z Lorem Ipsum, mali by ste sa presvedčiť, že uprostred textu nie je skrytá žiadna časť, ktorá by vás mohla priviesť do nepríjemnej situácie. Všetky generátory Lorem Ipsum na internete opakujú vopred definované časti textu, takže náš generátor je prvým skutočným generátorom na internete. Používa slovník viac ako 200 latinských slov, a kombinuje ich niekoľkými modelovými vetnými štruktúrami, takže generuje Lorem Ipsum, ktoré vyzerá hodnoverne. Vygenerované Lorem Ipsum je týmto spôsobom vždy bez opakujúcich sa častí, bez vtipov a nenáležitých výrazov, atď.
+Τί είναι το Lorem Ipsum;
+Το Lorem Ipsum είναι απλά ένα κείμενο χωρίς νόημα για τους επαγγελματίες της τυπογραφίας και στοιχειοθεσίας. Το Lorem Ipsum είναι το επαγγελματικό πρότυπο όσον αφορά το κείμενο χωρίς νόημα, από τον 15ο αιώνα, όταν ένας ανώνυμος τυπογράφος πήρε ένα δοκίμιο και ανακάτεψε τις λέξεις για να δημιουργήσει ένα δείγμα βιβλίου. Όχι μόνο επιβίωσε πέντε αιώνες, αλλά κυριάρχησε στην ηλεκτρονική στοιχειοθεσία, παραμένοντας με κάθε τρόπο αναλλοίωτο. Έγινε δημοφιλές τη δεκαετία του '60 με την έκδοση των δειγμάτων της Letraset όπου περιελάμβαναν αποσπάσματα του Lorem Ipsum, και πιο πρόσφατα με το λογισμικό ηλεκτρονικής σελιδοποίησης όπως το Aldus PageMaker που περιείχαν εκδοχές του Lorem Ipsum.
+
+Γιατί το χρησιμοποιούμε;
+Είναι πλέον κοινά παραδεκτό ότι ένας αναγνώστης αποσπάται από το περιεχόμενο που διαβάζει, όταν εξετάζει τη διαμόρφωση μίας σελίδας. Η ουσία της χρήσης του Lorem Ipsum είναι ότι έχει λίγο-πολύ μία ομαλή κατανομή γραμμάτων, αντίθετα με το να βάλει κανείς κείμενο όπως 'Εδώ θα μπει κείμενο, εδώ θα μπει κείμενο', κάνοντάς το να φαίνεται σαν κανονικό κείμενο. Πολλά λογισμικά πακέτα ηλεκτρονικής σελιδοποίησης και επεξεργαστές ιστότοπων πλέον χρησιμοποιούν το Lorem Ipsum σαν προκαθορισμένο δείγμα κειμένου, και η αναζήτησ για τις λέξεις 'lorem ipsum' στο διαδίκτυο θα αποκαλύψει πολλά web site που βρίσκονται στο στάδιο της δημιουργίας. Διάφορες εκδοχές έχουν προκύψει με το πέρασμα των χρόνων, άλλες φορές κατά λάθος, άλλες φορές σκόπιμα (με σκοπό το χιούμορ και άλλα συναφή).
+
+
+Από που προέρχεται;
+Αντίθετα με αυτό που θεωρεί η πλειοψηφία, το Lorem Ipsum δεν είναι απλά ένα τυχαίο κείμενο. Οι ρίζες του βρίσκονται σε ένα κείμενο Λατινικής λογοτεχνίας του 45 π.Χ., φτάνοντας την ηλικία του πάνω από 2000 έτη. Ο Richard McClintock, καθηγητής Λατινικών στο κολλέγιο Hampden-Dydney στην Βιρτζίνια, αναζήτησε μία από τις πιο σπάνιες Λατινικές λέξεις, την consectetur, από ένα απόσπασμα του Lorem Ipsum, και ανάμεσα σε όλα τα έργα της κλασσικής λογοτεχνίας, ανακάλυψε την αναμφισβήτητη πηγή του. To Lorem Ipsum προέρχεται από τις ενότητες 1.10.32 και 1.10.33 του "de Finibus Bonorum et Malorum" (Τα άκρα του καλού και του κακού) από τον Cicero (Σισερό), γραμμένο το 45 π.Χ. Αυτό το βιβλίο είναι μία διατριβή στην θεωρία της Ηθικής, πολύ δημοφιλής κατά την αναγέννηση. Η πρώτη γραμμή του Lorem Ipsum, "Lorem ipsum dolor sit amet...", προέρχεται από μία γραμμή στην ενότητα 1.10.32.
+
+Το καθιερωμένο κομμάτι του Lorem Ipsum που χρησιμοποιείται από τον 15ο αιώνα αναπαράγεται παρακάτω για αυτούς που ενδιαφέρονται. Οι ενότητες 1.10.32 και 1.10.33 από το "de Finibus Bonorum et Malorum" από τον Σισερό επίσης αναπαράγονται στην ακριβή αυθεντική τους μορφή, συνοδευόμενες από Αγγλικές εκδοχές από την μετάφραση του 1914 από τον H. Rackham.
+
+Που μπορώ να βρω μερικές;
+Υπάρχουν πολλές εκδοχές των αποσπασμάτων του Lorem Ipsum διαθέσιμες, αλλά η πλειοψηφία τους έχει δεχθεί κάποιας μορφής αλλοιώσεις, με ενσωματωμένους αστεεισμούς, ή τυχαίες λέξεις που δεν γίνονται καν πιστευτές. Εάν πρόκειται να χρησιμοποιήσετε ένα κομμάτι του Lorem Ipsum, πρέπει να είστε βέβαιοι πως δεν βρίσκεται κάτι προσβλητικό κρυμμένο μέσα στο κείμενο. Όλες οι γεννήτριες Lorem Ipsum στο διαδίκτυο τείνουν να επαναλαμβάνουν προκαθορισμένα κομμάτια του Lorem Ipsum κατά απαίτηση, καθιστώνας την παρούσα γεννήτρια την πρώτη πραγματική γεννήτρια στο διαδίκτυο. Χρησιμοποιεί ένα λεξικό με πάνω από 200 λατινικές λέξεις, συνδυασμένες με ένα εύχρηστο μοντέλο σύνταξης προτάσεων, ώστε να παράγει Lorem Ipsum που δείχνει λογικό. Από εκεί και πέρα, το Lorem Ipsum παραμένει πάντα ανοιχτό σε επαναλήψεις, ενσωμάτωση χιούμορ, μη κατανοητές λέξεις κλπ.
+Что такое Lorem Ipsum?
+Lorem Ipsum - это текст-"рыба", часто используемый в печати и вэб-дизайне. Lorem Ipsum является стандартной "рыбой" для текстов на латинице с начала XVI века. В то время некий безымянный печатник создал большую коллекцию размеров и форм шрифтов, используя Lorem Ipsum для распечатки образцов. Lorem Ipsum не только успешно пережил без заметных изменений пять веков, но и перешагнул в электронный дизайн. Его популяризации в новое время послужили публикация листов Letraset с образцами Lorem Ipsum в 60-х годах и, в более недавнее время, программы электронной вёрстки типа Aldus PageMaker, в шаблонах которых используется Lorem Ipsum.
+
+Почему он используется?
+Давно выяснено, что при оценке дизайна и композиции читаемый текст мешает сосредоточиться. Lorem Ipsum используют потому, что тот обеспечивает более или менее стандартное заполнение шаблона, а также реальное распределение букв и пробелов в абзацах, которое не получается при простой дубликации "Здесь ваш текст.. Здесь ваш текст.. Здесь ваш текст.." Многие программы электронной вёрстки и редакторы HTML используют Lorem Ipsum в качестве текста по умолчанию, так что поиск по ключевым словам "lorem ipsum" сразу показывает, как много веб-страниц всё ещё дожидаются своего настоящего рождения. За прошедшие годы текст Lorem Ipsum получил много версий. Некоторые версии появились по ошибке, некоторые - намеренно (например, юмористические варианты).
+
+
+Откуда он появился?
+Многие думают, что Lorem Ipsum - взятый с потолка псевдо-латинский набор слов, но это не совсем так. Его корни уходят в один фрагмент классической латыни 45 года н.э., то есть более двух тысячелетий назад. Ричард МакКлинток, профессор латыни из колледжа Hampden-Sydney, штат Вирджиния, взял одно из самых странных слов в Lorem Ipsum, "consectetur", и занялся его поисками в классической латинской литературе. В результате он нашёл неоспоримый первоисточник Lorem Ipsum в разделах 1.10.32 и 1.10.33 книги "de Finibus Bonorum et Malorum" ("О пределах добра и зла"), написанной Цицероном в 45 году н.э. Этот трактат по теории этики был очень популярен в эпоху Возрождения. Первая строка Lorem Ipsum, "Lorem ipsum dolor sit amet..", происходит от одной из строк в разделе 1.10.32
+
+Классический текст Lorem Ipsum, используемый с XVI века, приведён ниже. Также даны разделы 1.10.32 и 1.10.33 "de Finibus Bonorum et Malorum" Цицерона и их английский перевод, сделанный H. Rackham, 1914 год.
+
+Где его взять?
+Есть много вариантов Lorem Ipsum, но большинство из них имеет не всегда приемлемые модификации, например, юмористические вставки или слова, которые даже отдалённо не напоминают латынь. Если вам нужен Lorem Ipsum для серьёзного проекта, вы наверняка не хотите какой-нибудь шутки, скрытой в середине абзаца. Также все другие известные генераторы Lorem Ipsum используют один и тот же текст, который они просто повторяют, пока не достигнут нужный объём. Это делает предлагаемый здесь генератор единственным настоящим Lorem Ipsum генератором. Он использует словарь из более чем 200 латинских слов, а также набор моделей предложений. В результате сгенерированный Lorem Ipsum выглядит правдоподобно, не имеет повторяющихся абзацей или "невозможных" слов.
+Hva er Lorem Ipsum?
+Lorem Ipsum er rett og slett dummytekst fra og for trykkeindustrien. Lorem Ipsum har vært bransjens standard for dummytekst helt siden 1500-tallet, da en ukjent boktrykker stokket en mengde bokstaver for å lage et prøveeksemplar av en bok. Lorem Ipsum har tålt tidens tann usedvanlig godt, og har i tillegg til å bestå gjennom fem århundrer også tålt spranget over til elektronisk typografi uten vesentlige endringer. Lorem Ipsum ble gjort allment kjent i 1960-årene ved lanseringen av Letraset-ark med avsnitt fra Lorem Ipsum, og senere med sideombrekkingsprogrammet Aldus PageMaker som tok i bruk nettopp Lorem Ipsum for dummytekst.
+
+Hvorfor bruker vi det?
+Det er et velkjent faktum at lesere distraheres av lesbart innhold på en side når man ser på dens layout. Poenget med å bruke Lorem Ipsum er at det har en mer eller mindre normal fordeling av bokstaver i ord, i motsetning til 'Innhold her, innhold her', og gir inntrykk av å være lesbar tekst. Mange webside- og sideombrekkingsprogrammer bruker nå Lorem Ipsum som sin standard for provisorisk tekst, og et søk etter 'Lorem Ipsum' vil avdekke mang en uferdig webside. Ulike versjoner har sprunget frem i senere år, noen ved rene uhell og andre mer planlagte (med humor o.l.).
+
+
+Hvor kommer det fra?
+I motsetning til hva mange tror, er ikke Lorem Ipsum bare tilfeldig tekst. Dets røtter springer helt tilbake til et stykke klassisk latinsk litteratur fra 45 år f.kr., hvilket gjør det over 2000 år gammelt. Richard McClintock - professor i latin ved Hampden-Sydney College i Virginia, USA - slo opp flere av de mer obskure latinske ordene, consectetur, fra en del av Lorem Ipsum, og fant dets utvilsomme opprinnelse gjennom å studere bruken av disse ordene i klassisk litteratur. Lorem Ipsum kommer fra seksjon 1.10.32 og 1.10.33 i "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) av Cicero, skrevet i år 45 f.kr. Boken er en avhandling om teorier rundt etikk, og var veldig populær under renessansen. Den første linjen av Lorem Ipsum, "Lorem Ipsum dolor sit amet...", er hentet fra en linje i seksjon 1.10.32.
+
+Standardbiten av Lorem Ipsum brukt siden 1500-tallet er gjengitt nedenfor for spesielt interesserte. Seksjon 1.10.32 og 1.10.33 fra "de Finibus Bonorum et Malorum" av Cicero er også eksakt gjengitt, akkompagnert av engelske versjoner fra 1914-oversettelsen av H. Rackham.
+
+Hvor får jeg tak i det?
+Det finnes mange ulike varianter av Lorem Ipsum, men majoriteten av disse har blitt tuklet med på et eller annet vis. Det være seg innlagt humor eller tilfeldig genererte ord som ser langt fra troverdige ut. Skal man bruke avsnitt av Lorem Ipsum må man være sikker på at det ikke skjuler seg noe pinlig midt i teksten. Lorem Ipsum-generatorer på internett har en tendens til å repetere forhåndsdefinerte biter av tekst, noe som gjør dette til den første rettmessige generatoren på nett. Den bruker en samling av over 200 latinske ord, kombinert med en håndfull av setningsstrukturer, som sammen genererer Lorem Ipsum som ser fornuftig ut. Ferdiggenerert Lorem Ipsum er derfor alltid fri for repetisjon, innlagt humor, ugjenkjennlige ordformer osv.
+Kaj je Lorem Ipsum?
+Lorem Ipsum je slepi tekst, ki se uporablja pri razvoju tipografij in pri pripravi za tisk. Lorem Ipsum je v uporabi že več kot petsto let saj je to kombinacijo znakov neznani tiskar združil v vzorčno knjigo že v začetku 16. stoletja. To besedilo pa ni zgolj preživelo pet stoletij, temveč se je z malenkostnimi spremembami uspešno uveljavilo tudi v elektronskem namiznem založništvu. Na priljubljenosti je Lorem Ipsum pridobil v sedemdesetih letih prejšnjega stoletja, ko so na trg lansirali Letraset folije z Lorem Ipsum odstavki. V zadnjem času se Lorem Ipsum pojavlja tudi v priljubljenih programih za namizno založništvo kot je na primer Aldus PageMaker.
+
+Zakaj ga uporabljamo?
+Dokazano je, da razumljiva vsebina, med pregledovanjem oblikovne rešitve določene strani, neželeno preusmeri pozornost bralca. Ker ima Lorem Ipsum relativno enakomerno razporeditev znakov uspešno nadomesti začasna vsebinsko pomenska besedila. Veliko namizno založniških programov in spletnih urejevalnikov uporablja Lorem Ipsum kot privzeti slepi tekst. Zato spletno iskanje s ključnimi besedami "lorem ipsum" vrne številne zadetke še nedokončanih spletnih mest. Tekom let so namreč nastale številne različice tega slepega teksta, bodisi nenačrtovano ali namenoma, z različnimi šaljivimi in drugimi vložki.
+
+
+Od kod prihaja?
+V nasprotju z ustaljenim prepričanjem, Lorem Ipsum ni zgolj naključno besedilo. Njegove korenine segajo v dela klasične latinske literature izpred 2000 let. Richard McClintock, profesor latinščine na Hampden-Sydney College v Virginiji, je iz odstavka Lorem Ipsum izbrskal redko uporabljano latinsko besedo, consectetur, in poiskal njen izvor. Ugotovil je, da Lorem Ipsum prihaja iz odlomkov 1.10.32 in 1.10.33. Cicerovega dela "de Finibus Bonorum et Malorum" (Skrajnosti dobrega in zla), napisanega leta 45 pr.n.št. To delo razpravlja o teoriji etike in je bilo izredno priljubljeno v obdobju renesanse. Prva vrstica Lorem Ipsuma, "Lorem ispum dolor sit amet..", prihaja iz odlomka 1.10.32.
+
+Izvirni odlomek Lorem Ipsuma, ki je v rabi od 16. stoletja naprej, je predstavljen v nadaljevanju te strani. Tudi odlomka 1.10.32 in 1.10.33 iz Cicerovega dela "de Finibus Bonorum et Malorum" sta dobesedno prenesena iz originala in opremljena z angleškim prevodom H. Rackhama iz leta 1914.
+
+Kje ga lahko dobim?
+Obstajajo številne različice Lorem Ipsuma, vendar so za večino le-teh značilne raznovrstne prilagoditve z dodajanjem različnih šaljivih in drugih vložkov. Zato je pomembno, da se ob uporabi Lorem Ipsuma najprej prepričate, da se v odlomkih ne skriva kaj neprijetnega. Naša različica Lorem Ipsuma temelji na slovarju z več kot 200 latinskimi besedami, ki se s pomočjo modela stavčnih struktur povezujejo v bolj smiselne stavke. Generirano Lorem Ipsum besedilo je tako brez ponavljanj, šaljivih vložkov in neprimernih vrinjenih besed ter drugih neprijetnih dodatkov.
+Cos’è Lorem Ipsum?
+Lorem Ipsum è un testo segnaposto utilizzato nel settore della tipografia e della stampa. Lorem Ipsum è considerato il testo segnaposto standard sin dal sedicesimo secolo, quando un anonimo tipografo prese una cassetta di caratteri e li assemblò per preparare un testo campione. È sopravvissuto non solo a più di cinque secoli, ma anche al passaggio alla videoimpaginazione, pervenendoci sostanzialmente inalterato. Fu reso popolare, negli anni ’60, con la diffusione dei fogli di caratteri trasferibili “Letraset”, che contenevano passaggi del Lorem Ipsum, e più recentemente da software di impaginazione come Aldus PageMaker, che includeva versioni del Lorem Ipsum.
+
+Perchè lo utilizziamo?
+È universalmente riconosciuto che un lettore che osserva il layout di una pagina viene distratto dal contenuto testuale se questo è leggibile. Lo scopo dell’utilizzo del Lorem Ipsum è che offre una normale distribuzione delle lettere (al contrario di quanto avviene se si utilizzano brevi frasi ripetute, ad esempio “testo qui”), apparendo come un normale blocco di testo leggibile. Molti software di impaginazione e di web design utilizzano Lorem Ipsum come testo modello. Molte versioni del testo sono state prodotte negli anni, a volte casualmente, a volte di proposito (ad esempio inserendo passaggi ironici).
+
+
+Da dove viene?
+Al contrario di quanto si pensi, Lorem Ipsum non è semplicemente una sequenza casuale di caratteri. Risale ad un classico della letteratura latina del 45 AC, cosa che lo rende vecchio di 2000 anni. Richard McClintock, professore di latino al Hampden-Sydney College in Virginia, ha ricercato una delle più oscure parole latine, consectetur, da un passaggio del Lorem Ipsum e ha scoperto tra i vari testi in cui è citata, la fonte da cui è tratto il testo, le sezioni 1.10.32 and 1.10.33 del "de Finibus Bonorum et Malorum" di Cicerone. Questo testo è un trattato su teorie di etica, molto popolare nel Rinascimento. La prima riga del Lorem Ipsum, "Lorem ipsum dolor sit amet..", è tratta da un passaggio della sezione 1.10.32.
+
+Il brano standard del Lorem Ipsum usato sin dal sedicesimo secolo è riprodotto qui di seguito per coloro che fossero interessati. Anche le sezioni 1.10.32 e 1.10.33 del "de Finibus Bonorum et Malorum" di Cicerone sono riprodotte nella loro forma originale, accompagnate dalla traduzione inglese del 1914 di H. Rackham.
+
+Dove posso trovarlo?
+Esistono innumerevoli variazioni dei passaggi del Lorem Ipsum, ma la maggior parte hanno subito delle variazioni del tempo, a causa dell’inserimento di passaggi ironici, o di sequenze casuali di caratteri palesemente poco verosimili. Se si decide di utilizzare un passaggio del Lorem Ipsum, è bene essere certi che non contenga nulla di imbarazzante. In genere, i generatori di testo segnaposto disponibili su internet tendono a ripetere paragrafi predefiniti, rendendo questo il primo vero generatore automatico su intenet. Infatti utilizza un dizionario di oltre 200 vocaboli latini, combinati con un insieme di modelli di strutture di periodi, per generare passaggi di testo verosimili. Il testo così generato è sempre privo di ripetizioni, parole imbarazzanti o fuori luogo ecc.
+Mis on Lorem Ipsum?
+Lorem Ipsum on lihtsalt proovitekst, mida kasutatakse printimis- ja ladumistööstuses. See on olnud tööstuse põhiline proovitekst juba alates 1500. aastatest, mil tundmatu printija võttis hulga suvalist teksti, et teha trükinäidist. Lorem Ipsum ei ole ainult viis sajandit säilinud, vaid on ka edasi kandunud elektroonilisse trükiladumisse, jäädes sealjuures peaaegu muutumatuks. See sai tuntuks 1960. aastatel Letraset'i lehtede väljalaskmisega, ja hiljuti tekstiredaktoritega nagu Aldus PageMaker, mis sisaldavad erinevaid Lorem Ipsumi versioone.
+
+Miks me seda kasutame?
+On teada-tuntud fakt, et lehe kujunduse vaatamisel juhib selle loetav sisu lugeja tähelepanu kõrvale. Lorem Ipsumi kasutamise mõte seisneb selles, et sellel on enam-vähem normaalne jaotus tähti, mitte nagu korduvatel sõnadel "sisu siin, sisu siin", nähes välja nagu tavaline loetav tekst. Paljud tekstiredaktorid ja veebilehtede valmistamise programmid kasutavad Lorem Ipsumit vaikimisi mudeltekstina, ja trükkides otsingusse "lorem ipsum" võib leida veebilehti, mida ei ole veel nende õige sisuga täidetud. Aastatega on tekkinud mitmeid versioone, mõnikord kogemata, mõnikord meelega (huumori sisestamisega jne).
+
+
+Kust see pärineb?
+Vastupidiselt tavaarusaamale, Lorem Ipsum ei ole lihtsalt suvaline tekst. See sai alguse osakesest klassikalisest ladina kirjandusest, mis on pärit aastast 45 eKr, olles seega rohkem kui kaks tuhat aastat vana. Virginia Hampden-Sydney College'i ladina keele professor Richard McClintock otsis Lorem Ipsumi lõigust ühe ebamääraseima ladinakeelse sõna, 'consecteur', ja vaadates läbi sõna viited klassikalises kirjanduses, leidis Lorem Ipsumi vaieldamatu allika. Lorem Ipsum on tulnud Cicero 45 aastat eKr kirjutatud raamatu "De Finibus Bonorum et Malorum" ("Hüvede ja pahede piiridest") osadest 1.10.32 ja 1.10.33. See raamat on uurimus eetikateooriast, mis oli renessansi ajal väga populaarne. Lorem Ipsumi esimene rida, "Lorem ipsum dolor sit amet...", tuleb reast osas 1.10.32.
+
+Standardne tükk Lorem Ipsumit, mida kasutatakse 1500. aastatest on huvilistele allpool välja toodud. Osad 1.10.32 ja 1.10.33 Cicero "De Finibus Bonorum et Malorumist" on avaldatud nende täpsel originaalsel kujul koos H. Rackami 1914. aasta ingliskeelse tõlkega.
+
+Kust seda saada?
+Saadaval on mitmeid erinevaid Lorem Ipsumi variante, kuid enamik neist on läbi teinud muutusi kas sisestatud huumori või suvaliste sõnade tõttu, mis ei näe üldsegi usutavad välja. Kui te kavatsete Lorem Ipsumit kasutada, peate te kindel olema, et kuskil keset teksti midagi piinlikku ei ole. Kõik Lorem Ipsumi generaatorid kipuvad kindlaid lauseridu kordama, seega on see sait siin esimene tõeline Lorem Ipsumi generaator Internetis. See kasutab sõnastikku üle 200 ladina sõnaga ja, koos hulga lausestruktuuride mudelitega, toodab korralikku Lorem Ipsumit. Toodetud Lorem Ipsum on seega alati vaba kordustest, naljadest, ebaharilikest sõnadest jne.
+Lorem Ipsum คืออะไร?
+Lorem Ipsum คือ เนื้อหาจำลองแบบเรียบๆ ที่ใช้กันในธุรกิจงานพิมพ์หรืองานเรียงพิมพ์ มันได้กลายมาเป็นเนื้อหาจำลองมาตรฐานของธุรกิจดังกล่าวมาตั้งแต่ศตวรรษที่ 16 เมื่อเครื่องพิมพ์โนเนมเครื่องหนึ่งนำรางตัวพิมพ์มาสลับสับตำแหน่งตัวอักษรเพื่อทำหนังสือตัวอย่าง Lorem Ipsum อยู่ยงคงกระพันมาไม่ใช่แค่เพียงห้าศตวรรษ แต่อยู่มาจนถึงยุคที่พลิกโฉมเข้าสู่งานเรียงพิมพ์ด้วยวิธีทางอิเล็กทรอนิกส์ และยังคงสภาพเดิมไว้อย่างไม่มีการเปลี่ยนแปลง มันได้รับความนิยมมากขึ้นในยุค ค.ศ. 1960 เมื่อแผ่น Letraset วางจำหน่ายโดยมีข้อความบนนั้นเป็น Lorem Ipsum และล่าสุดกว่านั้น คือเมื่อซอฟท์แวร์การทำสื่อสิ่งพิมพ์ (Desktop Publishing) อย่าง Aldus PageMaker ได้รวมเอา Lorem Ipsum เวอร์ชั่นต่างๆ เข้าไว้ในซอฟท์แวร์ด้วย
+
+ทำไมจึงต้องนำมาใช้?
+มีหลักฐานที่เป็นข้อเท็จจริงยืนยันมานานแล้ว ว่าเนื้อหาที่อ่านรู้เรื่องนั้นจะไปกวนสมาธิของคนอ่านให้เขวไปจากส่วนที้เป็น Layout เรานำ Lorem Ipsum มาใช้เพราะความที่มันมีการกระจายของตัวอักษรธรรมดาๆ แบบพอประมาณ ซึ่งเอามาใช้แทนการเขียนว่า ‘ตรงนี้เป็นเนื้อหา, ตรงนี้เป็นเนื้อหา' ได้ และยังทำให้มองดูเหมือนกับภาษาอังกฤษที่อ่านได้ปกติ ปัจจุบันมีแพ็กเกจของซอฟท์แวร์การทำสื่อสิ่งพิมพ์ และซอฟท์แวร์การสร้างเว็บเพจ (Web Page Editor) หลายตัวที่ใช้ Lorem Ipsum เป็นแบบจำลองเนื้อหาที่เป็นค่าตั้งต้น และเวลาที่เสิร์ชด้วยคำว่า 'lorem ipsum' ผลการเสิร์ชที่ได้ก็จะไม่พบบรรดาเว็บไซต์ที่ยังคงอยู่ในช่วงเริ่มสร้างด้วย โดยหลายปีที่ผ่านมาก็มีการคิดค้นเวอร์ชั่นต่างๆ ของ Lorem Ipsum ขึ้นมาใช้ บ้างก็เป็นความบังเอิญ บ้างก็เป็นความตั้งใจ (เช่น การแอบแทรกมุกตลก)
+
+
+มันมีที่มาอย่างไร?
+ตรงกันข้ามกับความเชื่อที่นิยมกัน Lorem Ipsum ไม่ได้เป็นเพียงแค่ชุดตัวอักษรที่สุ่มขึ้นมามั่วๆ แต่หากมีที่มาจากวรรณกรรมละตินคลาสสิกชิ้นหนึ่งในยุค 45 ปีก่อนคริสตศักราช ทำให้มันมีอายุถึงกว่า 2000 ปีเลยทีเดียว ริชาร์ด แมคคลินท็อค ศาสตราจารย์ชาวละติน จากวิทยาลัยแฮมพ์เด็น-ซิดนีย์ ในรัฐเวอร์จิเนียร์ นำคำภาษาละตินคำว่า consectetur ซึ่งหาคำแปลไม่ได้จาก Lorem Ipsum ตอนหนึ่งมาค้นเพิ่มเติม โดยตรวจเทียบกับแหล่งอ้างอิงต่างๆ ในวรรณกรรมคลาสสิก และค้นพบแหล่งข้อมูลที่ไร้ข้อกังขาว่า Lorem Ipsum นั้นมาจากตอนที่ 1.10.32 และ 1.10.33 ของเรื่อง "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) ของ ซิเซโร ที่แต่งไว้เมื่อ 45 ปีก่อนคริสตศักราช หนังสือเล่มนี้เป็นเรื่องราวที่ว่าด้วยทฤษฎีแห่งจริยศาสตร์ ซึ่งเป็นที่นิยมมากในยุคเรเนสซองส์ บรรทัดแรกของ Lorem Ipsum "Lorem ipsum dolor sit amet.." ก็มาจากบรรทัดหนึ่งในตอนที่ 1.10.32 นั่นเอง
+
+ด้านล่างของหน้านี้คือท่อนมาตรฐานของ Lorem Ipsum ที่ใช้กันมาตั้งแต่คริสตศตวรรษที่ 16ที่ได้รับการสร้างขึ้นใหม่สำหรับผู้ที่สนใจ ประกอบไปด้วย ตอนที่ 1.10.32 และ 1.10.33 จากเรื่อง "de Finibus Bonorum et Malorum" โดยซิเซโร ก็ได้รับการผลิตขึ้นใหม่ด้วยเช่นกันในรูปแบบที่ตรงกับต้นฉบับ ตามมาด้วยเวอร์ชั่นภาษาอังกฤษจากการแปลของ เอช แร็คแคม เมื่อปี ค.ศ. 1914
+
+จะนำมาใช้ได้จากที่ไหน?
+มีท่อนต่างๆ ของ Lorem Ipsum ให้หยิบมาใช้งานได้มากมาย แต่ส่วนใหญ่แล้วจะถูกนำไปปรับให้เป็นรูปแบบอื่นๆ อาจจะด้วยการสอดแทรกมุกตลก หรือด้วยคำที่มั่วขึ้นมาซึ่งถึงอย่างไรก็ไม่มีทางเป็นเรื่องจริงได้เลยแม้แต่น้อย ถ้าคุณกำลังคิดจะใช้ Lorem Ipsum สักท่อนหนึ่ง คุณจำเป็นจะต้องตรวจให้แน่ใจว่าไม่มีอะไรน่าอับอายซ่อนอยู่ภายในท่อนนั้นๆ ตัวสร้าง Lorem Ipsum บนอินเทอร์เน็ตทุกตัวมักจะเอาท่อนที่แน่ใจแล้วมาใช้ซ้ำๆ ทำให้กลายเป็นที่มาของตัวสร้างที่แท้จริงบนอินเทอร์เน็ต ในการสร้าง Lorem Ipsum ที่ดูเข้าท่า ต้องใช้คำจากพจนานุกรมภาษาละตินถึงกว่า 200 คำ ผสมกับรูปแบบโครงสร้างประโยคอีกจำนวนหนึ่ง เพราะฉะนั้น Lorem Ipsum ที่ถูกสร้างขึ้นใหม่นี้ก็จะไม่ซ้ำไปซ้ำมา ไม่มีมุกตลกซุกแฝงไว้ภายใน หรือไม่มีคำใดๆ ที่ไม่บ่งบอกความหมาย
+Lorem Ipsum Nedir?
+Lorem Ipsum, dizgi ve baskı endüstrisinde kullanılan mıgır metinlerdir. Lorem Ipsum, adı bilinmeyen bir matbaacının bir hurufat numune kitabı oluşturmak üzere bir yazı galerisini alarak karıştırdığı 1500'lerden beri endüstri standardı sahte metinler olarak kullanılmıştır. Beşyüz yıl boyunca varlığını sürdürmekle kalmamış, aynı zamanda pek değişmeden elektronik dizgiye de sıçramıştır. 1960'larda Lorem Ipsum pasajları da içeren Letraset yapraklarının yayınlanması ile ve yakın zamanda Aldus PageMaker gibi Lorem Ipsum sürümleri içeren masaüstü yayıncılık yazılımları ile popüler olmuştur.
+
+Neden Kullanırız?
+Yinelenen bir sayfa içeriğinin okuyucunun dikkatini dağıttığı bilinen bir gerçektir. Lorem Ipsum kullanmanın amacı, sürekli 'buraya metin gelecek, buraya metin gelecek' yazmaya kıyasla daha dengeli bir harf dağılımı sağlayarak okunurluğu artırmasıdır. Şu anda birçok masaüstü yayıncılık paketi ve web sayfa düzenleyicisi, varsayılan mıgır metinler olarak Lorem Ipsum kullanmaktadır. Ayrıca arama motorlarında 'lorem ipsum' anahtar sözcükleri ile arama yapıldığında henüz tasarım aşamasında olan çok sayıda site listelenir. Yıllar içinde, bazen kazara, bazen bilinçli olarak (örneğin mizah katılarak), çeşitli sürümleri geliştirilmiştir.
+
+
+Nereden Gelir?
+Yaygın inancın tersine, Lorem Ipsum rastgele sözcüklerden oluşmaz. Kökleri M.Ö. 45 tarihinden bu yana klasik Latin edebiyatına kadar uzanan 2000 yıllık bir geçmişi vardır. Virginia'daki Hampden-Sydney College'dan Latince profesörü Richard McClintock, bir Lorem Ipsum pasajında geçen ve anlaşılması en güç sözcüklerden biri olan 'consectetur' sözcüğünün klasik edebiyattaki örneklerini incelediğinde kesin bir kaynağa ulaşmıştır. Lorm Ipsum, Çiçero tarafından M.Ö. 45 tarihinde kaleme alınan "de Finibus Bonorum et Malorum" (İyi ve Kötünün Uç Sınırları) eserinin 1.10.32 ve 1.10.33 sayılı bölümlerinden gelmektedir. Bu kitap, ahlak kuramı üzerine bir tezdir ve Rönesans döneminde çok popüler olmuştur. Lorem Ipsum pasajının ilk satırı olan "Lorem ipsum dolor sit amet" 1.10.32 sayılı bölümdeki bir satırdan gelmektedir.
+
+1500'lerden beri kullanılmakta olan standard Lorem Ipsum metinleri ilgilenenler için yeniden üretilmiştir. Çiçero tarafından yazılan 1.10.32 ve 1.10.33 bölümleri de 1914 H. Rackham çevirisinden alınan İngilizce sürümleri eşliğinde özgün biçiminden yeniden üretilmiştir.
+
+Nereden Bulabilirim?
+Lorem Ipsum pasajlarının birçok çeşitlemesi vardır. Ancak bunların büyük bir çoğunluğu mizah katılarak veya rastgele sözcükler eklenerek değiştirilmişlerdir. Eğer bir Lorem Ipsum pasajı kullanacaksanız, metin aralarına utandırıcı sözcükler gizlenmediğinden emin olmanız gerekir. İnternet'teki tüm Lorem Ipsum üreteçleri önceden belirlenmiş metin bloklarını yineler. Bu da, bu üreteci İnternet üzerindeki gerçek Lorem Ipsum üreteci yapar. Bu üreteç, 200'den fazla Latince sözcük ve onlara ait cümle yapılarını içeren bir sözlük kullanır. Bu nedenle, üretilen Lorem Ipsum metinleri yinelemelerden, mizahtan ve karakteristik olmayan sözcüklerden uzaktır.
+Що таке Lorem Ipsum?
+Lorem Ipsum - це текст-"риба", що використовується в друкарстві та дизайні. Lorem Ipsum є, фактично, стандартною "рибою" аж з XVI сторіччя, коли невідомий друкар взяв шрифтову гранку та склав на ній підбірку зразків шрифтів. "Риба" не тільки успішно пережила п'ять століть, але й прижилася в електронному верстуванні, залишаючись по суті незмінною. Вона популяризувалась в 60-их роках минулого сторіччя завдяки виданню зразків шрифтів Letraset, які містили уривки з Lorem Ipsum, і вдруге - нещодавно завдяки програмам комп'ютерного верстування на кшталт Aldus Pagemaker, які використовували різні версії Lorem Ipsum.
+
+Чому ми ним користуємось?
+Вже давно відомо, що читабельний зміст буде заважати зосередитись людині, яка оцінює композицію сторінки. Сенс використання Lorem Ipsum полягає в тому, що цей текст має більш-менш нормальне розподілення літер на відміну від, наприклад, "Тут іде текст. Тут іде текст." Це робить текст схожим на оповідний. Багато програм верстування та веб-дизайну використовують Lorem Ipsum як зразок і пошук за терміном "lorem ipsum" відкриє багато веб-сайтів, які знаходяться ще в зародковому стані. Різні версії Lorem Ipsum з'явились за минулі роки, деякі випадково, деякі було створено зумисно (зокрема, жартівливі).
+
+
+Звідки він походить?
+На відміну від поширеної думки Lorem Ipsum не є випадковим набором літер. Він походить з уривку класичної латинської літератури 45 року до н.е., тобто має більш як 2000-річну історію. Річард Макклінток, професор латини з коледжу Хемпдін-Сидні, що у Вірджінії, вивчав одне з найменш зрозумілих латинських слів - consectetur - з уривку Lorem Ipsum, і у пошуку цього слова в класичній літературі знайшов безсумнівне джерело. Lorem Ipsum походить з розділів 1.10.32 та 1.10.33 цицеронівського "de Finibus Bonorum et Malorum" ("Про межі добра і зла"), написаного у 45 році до н.е. Цей трактат з теорії етики був дуже популярним в епоху Відродження. Перший рядок Lorem Ipsum, "Lorem ipsum dolor sit amet..." походить з одного з рядків розділу 1.10.32.
+
+Класичний текст, використовуваний з XVI сторіччя, наведено нижче для всіх зацікавлених. Також точно за оригіналом наведено розділи 1.10.32 та 1.10.33 цицеронівського "de Finibus Bonorum et Malorum" разом із перекладом англійською, виконаним 1914 року Х.Рекемом.
+
+Де собі взяти трохи?
+Існує багато варіацій уривків з Lorem Ipsum, але більшість з них зазнала певних змін на кшталт жартівливих вставок або змішування слів, які навіть не виглядають правдоподібно. Якщо ви збираєтесь використовувати Lorem Ipsum, ви маєте упевнитись в тому, що всередині тексту не приховано нічого, що могло б викликати у читача конфуз. Більшість відомих генераторів Lorem Ipsum в Мережі генерують текст шляхом повторення наперед заданих послідовностей Lorem Ipsum. Принципова відмінність цього генератора робить його першим справжнім генератором Lorem Ipsum. Він використовує словник з більш як 200 слів латини та цілий набір моделей речень - це дозволяє генерувати Lorem Ipsum, який виглядає осмислено. Таким чином, згенерований Lorem Ipsum не міститиме повторів, жартів, нехарактерних для латини слів і т.ін.
+Lorem Ipsum là gì?
+Lorem Ipsum chỉ đơn giản là một đoạn văn bản giả, được dùng vào việc trình bày và dàn trang phục vụ cho in ấn. Lorem Ipsum đã được sử dụng như một văn bản chuẩn cho ngành công nghiệp in ấn từ những năm 1500, khi một họa sĩ vô danh ghép nhiều đoạn văn bản với nhau để tạo thành một bản mẫu văn bản. Đoạn văn bản này không những đã tồn tại năm thế kỉ, mà khi được áp dụng vào tin học văn phòng, nội dung của nó vẫn không hề bị thay đổi. Nó đã được phổ biến trong những năm 1960 nhờ việc bán những bản giấy Letraset in những đoạn Lorem Ipsum, và gần đây hơn, được sử dụng trong các ứng dụng dàn trang, như Aldus PageMaker.
+
+Tại sao lại sử dụng nó?
+Chúng ta vẫn biết rằng, làm việc với một đoạn văn bản dễ đọc và rõ nghĩa dễ gây rối trí và cản trở việc tập trung vào yếu tố trình bày văn bản. Lorem Ipsum có ưu điểm hơn so với đoạn văn bản chỉ gồm nội dung kiểu "Nội dung, nội dung, nội dung" là nó khiến văn bản giống thật hơn, bình thường hơn. Nhiều phần mềm thiết kế giao diện web và dàn trang ngày nay đã sử dụng Lorem Ipsum làm đoạn văn bản giả, và nếu bạn thử tìm các đoạn "Lorem ipsum" trên mạng thì sẽ khám phá ra nhiều trang web hiện vẫn đang trong quá trình xây dựng. Có nhiều phiên bản khác nhau đã xuất hiện, đôi khi do vô tình, nhiều khi do cố ý (xen thêm vào những câu hài hước hay thông tục).
+
+
+Nó đến từ đâu?
+Trái với quan điểm chung của số đông, Lorem Ipsum không phải chỉ là một đoạn văn bản ngẫu nhiên. Người ta tìm thấy nguồn gốc của nó từ những tác phẩm văn học la-tinh cổ điển xuất hiện từ năm 45 trước Công Nguyên, nghĩa là nó đã có khoảng hơn 2000 tuổi. Một giáo sư của trường Hampden-Sydney College (bang Virginia - Mỹ) quan tâm tới một trong những từ la-tinh khó hiểu nhất, "consectetur", trích từ một đoạn của Lorem Ipsum, và đã nghiên cứu tất cả các ứng dụng của từ này trong văn học cổ điển, để từ đó tìm ra nguồn gốc không thể chối cãi của Lorem Ipsum. Thật ra, nó được tìm thấy trong các đoạn 1.10.32 và 1.10.33 của "De Finibus Bonorum et Malorum" (Đỉnh tối thượng của Cái Tốt và Cái Xấu) viết bởi Cicero vào năm 45 trước Công Nguyên. Cuốn sách này là một luận thuyết đạo lí rất phổ biến trong thời kì Phục Hưng. Dòng đầu tiên của Lorem Ipsum, "Lorem ipsum dolor sit amet..." được trích từ một câu trong đoạn thứ 1.10.32.
+
+Trích đoạn chuẩn của Lorem Ipsum được sử dụng từ thế kỉ thứ 16 và được tái bản sau đó cho những người quan tâm đến nó. Đoạn 1.10.32 và 1.10.33 trong cuốn "De Finibus Bonorum et Malorum" của Cicero cũng được tái bản lại theo đúng cấu trúc gốc, kèm theo phiên bản tiếng Anh được dịch bởi H. Rackham vào năm 1914.
+
+Làm thế nào để có nó?
+Có rất nhiều biến thể của Lorem Ipsum mà bạn có thể tìm thấy, nhưng đa số được biến đổi bằng cách thêm các yếu tố hài hước, các từ ngẫu nhiên có khi không có vẻ gì là có ý nghĩa. Nếu bạn định sử dụng một đoạn Lorem Ipsum, bạn nên kiểm tra kĩ để chắn chắn là không có gì nhạy cảm được giấu ở giữa đoạn văn bản. Tất cả các công cụ sản xuất văn bản mẫu Lorem Ipsum đều được làm theo cách lặp đi lặp lại các đoạn chữ cho tới đủ thì thôi, khiến cho lipsum.com trở thành công cụ sản xuất Lorem Ipsum đáng giá nhất trên mạng. Trang web này sử dụng hơn 200 từ la-tinh, kết hợp thuần thục nhiều cấu trúc câu để tạo ra văn bản Lorem Ipsum trông có vẻ thật sự hợp lí. Nhờ thế, văn bản Lorem Ipsum được tạo ra mà không cần một sự lặp lại nào, cũng không cần chèn thêm các từ ngữ hóm hỉnh hay thiếu trật tự.
+Çfarë është Lorem Ipsum?
+Lorem Ipsum është një tekst shabllon i industrisë së printimit dhe shtypshkronjave. Lorem Ipsum ka qenë teksti shabllon i industrisë që nga vitet 1500, kur një shtypës i panjohur morri një galeri shkrimesh dhe i ngatërroi për të krijuar një libër mostër. Teksti i ka mbijetuar jo vetëm pesë shekujve, por edhe kalimit në shtypshkrimin elektronik, duke ndenjur në thelb i pandryshuar. U bë i njohur në vitet 1960 me lëshimin e letrave 'Letraset' që përmbanin tekstin Lorem Ipsum, e në kohët e fundit me aplikacione publikimi si Aldus PageMaker që përmbajnë versione të Lorem Ipsum.
+
+Pse e përdorim?
+Është një fakt gjerësisht i njohur që lexuesi do të hutohet nga përmbajtja e një faqeje gjatë kohës që shikon dizenjimin. Arsyeja e përdorimit të Lorem Ipsum është sepse ka pak a shumë distribucion normal të gërmave, ndryshe nga përdorimi i 'Përmbajtja këtu, përmbajtja këtu', që e bën të ngjajë me një gjuhë të lexueshme. Shumë aplikacione publikimi dhe editorë tani përdorin Lorem Ipsum si tektin e tyre bazë, dhe një kërkim 'lorem ipsum' do të shfaqë shumë faqe interneti të pambaruara që në vend të përmbajtjes kanë pikërisht tekstin Lorem Ipsum. Shumë versione kanë evoluar gjatë viteve, disa në mënyë kazuale, disa me qëllim (humor dhe gjëra të ngjashme).
+
+
+Nga vjen?
+Ndryshe nga mendimi popullor, Lorem Ipsum nuk është tekst çfarëdo. Rrënjët i ka në një pjesë të letërsisë klasike Latine të viteve 45 BC, duke e bërë më shumë se 2000 vjet të lashtë. Richard McClintock, një profesor Latin ne Hampden-Sydney College në Virginia, kërkoi për një nga fjalët më të çuditshme të tekstit, consectetur dhe duke parë citimet e fjalës në letërsinë klasike zbuloi pa dyshim burimin. Lorem Ipsum vjen nga seksionet 1.10.32 dhe 1.10.33 të "de Finibus Bonorum et Malorum" (Ekstremet e të Mirës e të Keqes) nga Cicero, shkruar në vitin 45 BC. Libri është një traktat mbi teorine e etikës, shumë i famshëm gjatë Rilindjes. Rreshti i parë i Lorem Ipsum, "Lorem ipsum dolor sit amet.." vjen nga seksioni 1.10.32.
+
+Pjesa standarte e Lorem Ipsum e përdorur që në vitet 1500 riprodhohet më poshtë për të interesuarit. Seksionet 1.10.32 dhe 1.10.33 të "de Finibus Bonorum et Malorum" nga Cicero janë gjithashtu të riprodhuara në formën origjinale të shoqëruara nga versionet e përkthyera në anglisht të vitit 1914 nga H. Rackham.
+
+Ku mund ta gjej?
+Ka shumë variacione të tekstit Lorem Ipsum, por pjesa më e madhe kanë pësuar ndryshime, duke shtuar humor ose duke i ngatërruar fjalët të cilat nuk duken më të besueshme. Nëse do të përdorni tekstin Lorem Ipsum, sigurohuni që në tekst nuk është fshehur ndonjë shkrim i turpshëm. Të gjithë gjeneruesit Lorem Ipsum në internet priren të përsërisin fragmente të caktuara, duke e bërë këtë gjeneruesin e parë të vërtetë në internet. Gjeneruesi përdor një fjalor me më shumë se 2000 fjalë Latine, i kombinuar me struktura fjalishë për të gjeneruar Lorem Ipsum që duket i arsyeshëm. Teksti i gjeneruar është kështu gjithmonë i pa përsëritur, pa humor të fshehur ose fjalë jo karakteristike, etj.
+Ի՞նչ է Lorem Ipsum-ը
+Lorem Ipsum-ը տպագրության և տպագրական արդյունաբերության համար նախատեսված մոդելային տեքստ է: Սկսած 1500-ականներից` Lorem Ipsum-ը հանդիսացել է տպագրական արդյունաբերության ստանդարտ մոդելային տեքստ, ինչը մի անհայտ տպագրիչի կողմից տարբեր տառատեսակների օրինակների գիրք ստեղծելու ջանքերի արդյունք է: Այս տեքստը ոչ միայն կարողացել է գոյատևել հինգ դարաշրջան, այլև ներառվել է էլեկտրոնային տպագրության մեջ` մնալով էապես անփոփոխ: Այն հայտնի է դարձել 1960-ականներին Lorem Ipsum բովանդակող Letraset էջերի թողարկման արդյունքում, իսկ ավելի ուշ համակարգչային տպագրության այնպիսի ծրագրերի թողարկման հետևանքով, ինչպիսին է Aldus PageMaker-ը, որը ներառում է Lorem Ipsum-ի տարատեսակներ:
+
+Ինչո՞ւ ենք այն օգտագործում
+Հայտնի է, որ ընթերցողը, կարդալով հասկանալի տեքստ, չի կարողանա կենտրոնանալ տեքստի ձևավորման վրա: Lorem Ipsum օգտագործելը բացատրվում է նրանով, որ այն բաշխում է բառերը քիչ թե շատ իրականի նման, ի տարբերություն «Բովանդակություն, բովանդակություն» սովորական կրկննության, ինչը ընթերցողի համար հասկանալի է: Շատ համակարգչային տպագրական ծրագրեր և ինտերնետային էջերի խմբագրիչներ այն օգտագործում են որպես իրենց ստանդարտ տեքստային մոդել, և հետևապես, ինտերնետում Lorem Ipsum-ի որոնման արդյունքում կարելի է հայտնաբերել էջեր, որոնք դեռ նոր են կերտվում: Ժամանակի ընթացքում ձևավորվել են Lorem Ipsum-ի տարբեր վերսիաներ` երբեմն ներառելով պատահական տեքստեր, երբեմն էլ հատուկ իմաստ (հումոր և նմանատիպ բովանդակություն):
+
+
+Ի՞նչ ծագում ունի այն
+Հակառակ ընդհանուր պատկերացմանը` Lorem Ipsum-ը այդքան էլ պատահական հավաքված տեքստ չէ: Այս տեքստի արմատները հասնում են Ք.ա. 45թ. դասական լատինական գրականություն. այն 2000 տարեկան է: Ռիչարդ ՄքՔլինտոքը` Վիրջինիայի Համպդեն-Սիդնեյ քոլեջում լատիներենի մի դասախոս` ուսումնասիրելով Lorem Ipsum տեքստի ամենատարօրինակ բառերից մեկը` consectetur-ը, և այն որոնելով դասական գրականության մեջ` բացահայտեց դրա իսկական աղբյուրը: Lorem Ipsum-ը ամրագրված է Ք.ա 45թ. Ցիցերոնի "de Finibus Bonorum et Malorum" (Չարի և բարու ծայրահեղությունների մասին) ստեղծագործության 1.10.32 և 1.10.33 բաժիններում: Այս գիրքը Վերածննդի ժամանակաշրջանում էթիկայի տեսության հայտնի աշխատություն է եղել: Lorem Ipsum-ի առաջին տողը` "Lorem ipsum dolor sit amet..", 1.10.32 բաժնից է:
+
+Հետաքրքրվողների համար ոտորև ներկայացված է 1500-ականներից ի վեր օգտագործվող Lorem Ipsum-ի ստանդարտ տեքստի մի հատված: Ցիցերոնի «de Finibus Bonorum et Malorum» աշխատության 1.10.32 և 1.10.33 բաժինները ներկայացված են հենց բնօրինակ տեսքով` զուգորդված 1914թ. Հ. Րաքհամի անգլերեն թարգմանությամբ:
+
+Որտեղի՞ց վերցնել նման տեքստ
+Կան Lorem Ipsum-ի շատ տարբերակներ, սակայն շատերը աղավաղվել են տարաբնույթ, երբեմն նույնիսկ լատիներենից շատ հեռու և անհավանական բառերի և հումորի ավելացման արդյունքում: Եթե ուզում եք օգտագործել Lorem Ipsum, ապա երևի չեք ցանկանա, որ այն պարունակի ինչ-որ թաքնված հումոր տեքստի միջնամասում: Ինտերնետում բոլոր Lorem Ipsum արտադրիչները հակված են կրկնել նույն տեքստը մինչև ցանկալի ծավալի լրացումը. այնինչ իսկականը այս արտադրիչն է: Այն օգտագործում է լատիներենի շուրջ 200 բառ` դրանք համադրելով նախադասության հնարավոր շարադասությունների հետ, որպեսզի արտադրի ճշմարիտ Lorem Ipsum: Արտադրված Lorem Ipsum-ը, արդյունքում չունի կրկնություններ, հումորային բովանդակություն կամ այլ անիրական բառեր:
+Lorem Ipsum क्या है?
+Lorem Ipsum छपाई और अक्षर योजन उद्योग का एक साधारण डमी पाठ है. Lorem Ipsum सन १५०० के बाद से अभी तक इस उद्योग का मानक डमी पाठ मन गया, जब एक अज्ञात मुद्रक ने नमूना लेकर एक नमूना किताब बनाई. यह न केवल पाँच सदियों से जीवित रहा बल्कि इसने इलेक्ट्रॉनिक मीडिया में छलांग लगाने के बाद भी मूलतः अपरिवर्तित रहा. यह 1960 के दशक में Letraset Lorem Ipsum अंश युक्त पत्र के रिलीज के साथ लोकप्रिय हुआ, और हाल ही में Aldus PageMaker Lorem Ipsum के संस्करणों सहित तरह डेस्कटॉप प्रकाशन सॉफ्टवेयर के साथ अधिक प्रचलित हुआ.
+
+हम इसे क्यों प्रयोग करते हैं?
+यह एक लंबा स्थापित तथ्य है कि जब एक पाठक एक पृष्ठ के खाखे को देखेगा तो पठनीय सामग्री से विचलित हो जाएगा. Lorem Ipsum का उपयोग करने का मुद्दा यह है कि इसमें एक और अधिक या कम अक्षरों का सामान्य वितरण किया गया है, 'Content here, content here' प्रयोग करने की जगह इसे पठनीय English के रूप में प्रयोग किया जाये. अब कई डेस्कटॉप प्रकाशन संकुल और वेब पेज संपादक उनके डिफ़ॉल्ट मॉडल पाठ के रूप में Lorem Ipsum उपयोग करते हैं, और अब "Lorem Ipsum" के लिए खोज अपने शैशव में कई वेब साइटों को उजागर करती है. इसके विभिन्न संस्करणों का वर्षों में विकास हुआ है, कभी दुर्घटना से, तो कभी प्रयोजन पर (हास्य और लगाव डालने के लिए).
+
+
+यह कहाँ से आता है?
+आम धारणा के विपरीत Lorem Ipsum बस यादृच्छिक (random) पाठ नहीं है. यह 45 ई.पू. से शास्त्रीय लैटिन साहित्य के एक टुकड़े से जुड़ा है, जो इसे 2000 वर्ष से अधिक प्राचीन बनाता है. Richard McClintock, हेम्प्डन-वर्जीनिया में सिडनी कॉलेज में एक लैटिन प्रोफेसर है, ने एक Lorem इप्सुम में से एक और अधिक अस्पष्ट लैटिन शब्द देखा और शास्त्रीय साहित्य के शहर में जाते हुए असंदेहदास्पक स्रोत की खोज की. Lorem Ipsum सिसरौ(Sisero) द्वारा "De Finibus Bonorum et Malorum" (अच्छाई और बुराई की चरम सीमा) के 1.10.32 और 1.10.33 वर्गों से आता है जो ४५ BC में लिखा गया था. यह पुस्तक "नैतिकता के सिद्धांत" विषय पर निबंध, जो नवजागरण के दौर का एक बहुत लोकप्रिय ग्रंथ है. Lorem Ipsum की पहली पंक्ति, "Lorem ipsum dolor sit amet..", 1.10.32 खंड में एक पंक्ति से आती है.
+
+Lorem Ipsum का मानक हिस्सा जिसकी प्रतिलिपि सन 1500 से प्रयोग की जाती है, रुचि रखने वालों के लिए नीचे उपलब्ध है. Cicero द्वारा लिखे गए "de Finibus Bonorum et Malorum" के खंड 1.10.32 और 1.10.3 भी अपने सटीक मूल रूप में उत्पादित हैं, साथ ही H. Rackham द्वारा 1914 में अंग्रेजी में अनुवादित संस्करण.
+
+मुझे कुछ भाग कहा मिल सकता है?
+Lorem Ipsum के अंश कई रूप में उपलब्ध हैं, लेकिन बहुमत को किसी अन्य रूप में परिवर्तन का सामना करना पड़ा है, हास्य डालना या क्रमरहित शब्द , जो तनिक भी विश्वसनीय नहीं लग रहे हो. यदि आप Lorem Ipsum के एक अनुच्छेद का उपयोग करने जा रहे हैं, तो आप को यकीन दिला दें कि पाठ के मध्य में वहाँ कुछ भी शर्मनाक छिपा हुआ नहीं है. इंटरनेट पर सभी Lorem Ipsum जनरेटर पूर्वनिर्धारित मात्रा में अनुच्छेद को दोहराने कि वजह से इंटरनेट पर सबसे विश्वसनीय जनरेटर होने के लिए जाने जाते हैं. यह एक 200 से भी अधिक लैटिन शब्दों के शब्दकोश का उपयोग करता है , जो एक मुट्ठी भर मॉडल वाक्य संरचना के साथ संयुक्त होकर Lorem Ipsum उत्पन्न करता है जो उचित भी लगता है. इसलिए उत्पन्न Lorem Ipsum हमेशा पुनरावृत्ति, हास्य, या गैर विशेषता शब्दों आदि से मुक्त होता है.
+Što je Lorem Ipsum?
+Lorem Ipsum je jednostavno probni tekst koji se koristi u tiskarskoj i slovoslagarskoj industriji. Lorem Ipsum postoji kao industrijski standard još od 16-og stoljeća, kada je nepoznati tiskar uzeo tiskarsku galiju slova i posložio ih da bi napravio knjigu s uzorkom tiska. Taj je tekst ne samo preživio pet stoljeća, već se i vinuo u svijet elektronskog slovoslagarstva, ostajući u suštini nepromijenjen. Postao je popularan tijekom 1960-ih s pojavom Letraset listova s odlomcima Lorem Ipsum-a, a u skorije vrijeme sa software-om za stolno izdavaštvo kao što je Aldus PageMaker koji također sadrži varijante Lorem Ipsum-a.
+
+Zašto ga koristimo?
+Odavno je uspostavljena činjenica da čitača ometa razumljivi tekst dok gleda raspored elemenata na stranici. Smisao korištenja Lorem Ipsum-a jest u tome što umjesto 'sadržaj ovjde, sadržaj ovjde' imamo normalni raspored slova i riječi, pa čitač ima dojam da gleda tekst na razumljivom jeziku. Mnogi programi za stolno izdavaštvo i uređivanje web stranica danas koriste Lorem Ipsum kao zadani model teksta, i ako potražite 'lorem ipsum' na Internetu, kao rezultat dobit ćete mnoge stranice u izradi. Razne verzije razvile su se tijekom svih tih godina, ponekad slučajno, ponekad namjerno (s dodatkom humora i slično).
+
+
+Odakle dolazi?
+Suprotno raširenom mišljenju, Lorem Ipsum nije samo slučajni tekst, već ima korijene u klasičnoj latinskoj književnosti iz godine 45. pr.n.e., što znači da mu je preko 2000 godina. Richard McClintock, profesor latinskog jezika na Hampden-Sydney koledžu u Virginiji, potražio je jednu od čudnijijh latinskih riječi, consectetur, iz Lorem Ipsum teksta, i prolazeći kroz citate te riječi u klasičnoj književnosti, otkrio nedvojbeni izvor. Lorem Ipsum dolazi iz odlomaka 1.10.32 i 1.10.33 Ciceronovog djela pod naslovom "de Finibus Bonorum et Malorum" (Krajnosti dobra i zla), napisanog 45. godine pr.n.e. Ovo je djelo rasprava o teoriji etike, a bilo je vrlo popularno u Renesansi. Prvi redak Lorem Ipsum-a, "Lorem ipsum dolor sit amet..", dolazi iz odlomka 1.10.32.
+
+Za one koje zanima, standardni dio Lorem Ipsum-a koji se koristi od 16.-og stoljeća može se naći u nastavku na ovoj stranici. Dijelovi 1.10.32 i 1.10.33 iz djela "de Finibus Bonorum et Malorum" su doslovno preneseni iz originala, popraćeni engleskim prijevodom H. Rackhama iz 1914.
+
+Gdje se može nabaviti?
+Postoje mnoge varijacije odlomaka iz Lorem Ipsum-a, ali većina je pretrpjela kojekakve promjene s dodanim humorom, ili nasumičnim riječima koje nikako tu ne spadaju. Ako trebate koristiti Lorem Ipsum, morate biti sigurni da tekst ne sadrži skrivene nepodobne riječi ili fraze. Lorem Ipsum generatori na Internetu većinom ponavljaju zadane odlomke po potrebi, što ovaj naš čini prvim pravim generatorom na Internetu. Mi koristimo riječnik od 200 latinskih riječi, u kombinaciji s nekoliko modela rečeničnih struktura, da bi generirali Lorem Ipsum koji izgleda razumno. Stoga je Lorem Ipsum s ove stranice uvijek bez ponavljanja, bez dodanog humora ili nekaraketerističnih riječi.
+რა არის Lorem Ipsum?
+Lorem Ipsum საბეჭდი და ტიპოგრაფიული ინდუსტრიის უშინაარსო ტექსტია. იგი სტანდარტად 1500-იანი წლებიდან იქცა, როდესაც უცნობმა მბეჭდავმა ამწყობ დაზგაზე წიგნის საცდელი ეგზემპლარი დაბეჭდა. მისი ტექსტი არამარტო 5 საუკუნის მანძილზე შემორჩა, არამედ მან დღემდე, ელექტრონული ტიპოგრაფიის დრომდეც უცვლელად მოაღწია. განსაკუთრებული პოპულარობა მას 1960-იან წლებში გამოსულმა Letraset-ის ცნობილმა ტრაფარეტებმა მოუტანა, უფრო მოგვიანებით კი — Aldus PageMaker-ის ტიპის საგამომცემლო პროგრამებმა, რომლებშიც Lorem Ipsum-ის სხვადასხვა ვერსიები იყო ჩაშენებული.
+
+რატომ ვიყენებთ მას?
+ცნობილი ფაქტია, რომ გვერდის წაკითხვად შიგთავსს შეუძლია მკითხველის ყურადღება მიიზიდოს და დიზაინის აღქმაში ხელი შეუშალოს. Lorem Ipsum-ის გამოყენებით ვღებულობთ იმაზე მეტ-ნაკლებად სწორი გადანაწილების ტექსტს, ვიდრე ერთიდაიგივე გამეორებადი სიტყვებია ხოლმე. შედეგად, ტექსტი ჩვეულებრივ ინგლისურს გავს, მისი წაითხვა კი შეუძლებელია. დღეს უამრავი პერსონალური საგამომცემლო პროგრამა და ვებგვერდი იყენებს Lorem Ipsum-ს, როგორც დროებით ტექსტს წყობის შესავსებად; Lorem Ipsum-ის მოძებნისას კი საძიებო სისტემები ბევრ დაუსრულებელ გვერდს გვიჩვენებენ. წლების მანძილზე ამ ტექსტის უამრავი ვერსია გამოჩნდა, ზოგი შემთხვევით დაშვებული შეცდომის გამო, ზოგი კი — განზრახ, ხუმრობით.
+
+
+საიდან მოდის ეს ტექსტი?
+გავრცელებული მოსაზრებით, Lorem Ipsum შემთხვევითი ტექსტი სულაც არაა. მისი ფესვები ჯერკიდევ ჩვ. წ. აღ-მდე 45 წლის დროინდელი კლასიკური ლათინური ლიტერატურიდან მოდის. ვირჯინიის შტატში მდებარე ჰემპდენ-სიდნეის კოლეჯის პროფესორმა რიჩარდ მაკკლინტოკმა აიღო ერთ-ერთი ყველაზე იშვიათი ლათინური სიტყვა "consectetur" Lorem Ipsum-პასაჟიდან და გადაწყვიტა მოეძებნა იგი კლასიკურ ლიტერატურაში. ძიება შედეგიანი აღმოჩნდა — ტექსტი Lorem Ipsum გადმოწერილი ყოფილა ციცერონის "de Finibus Bonorum et Malorum"-ის 1.10.32 და 1.10.33 თავებიდან. ეს წიგნი ეთიკის თეორიის ტრაქტატია, რომელიც რენესანსის პერიოდში ძალიან იყო გავრცელებული. Lorem Ipsum-ის პირველი ხაზი, "Lorem ipsum dolor sit amet..." სწორედ ამ წიგნის 1.10.32 თავიდანაა.
+
+მათთვის, ვისაც აინტერესებს, ქვევით მოყვანილია Lorem Ipsum-ის ორიგინალი ნაწყვეტი 1500-იანი წლებიდან. ასევე შეგიძლიათ ნახოთ 1.10.32 და 1.10.33 თავები ციცერონის "de Finibus Bonorum et Malorum"-დან, რომელსაც თან ერთვის 1914 წელს ჰ. რექჰამის შესრულებული ინგლისურენოვანი თარგმანი.
+
+სად ვიშოვო?
+დღეს უკვე Lorem Ipsum-პასაჟის უამრავი ვერსია არსებობს. მათი დიდი ნაწილი ხუმრობით არის შეცვლილი, ბევრი კი უბრალოდ სიტყვების შემთხვევითი გენერირებით დაიწერა. ინტერნეტში არსებული გენერატორები, როგორც წესი, წინასწარ განსაზღვრული ტექსტის ნაგლეჯს იმეორებენ ხოლმე, ამიტომ ეს პირველი ნამდვილი გენერატორია. იგი რთული და მართებული სტრუქტურის წინადადებების ასაწყობად 200-მდე ლათინური სიტყვისგან შემდგარ ლექსიკონს იყენებს. შედეგად მიიღება ტექსტი, რომელიც ვიზუალურად მაქსიმალურად ახლოსაა რეალურთან. გენერირებული Lorem Ipsum არასოდეს არ არის გამეორებადი, შემთხვევითი სიტყვების ან ხუმრობების შემცველი.
+☺️🙂😊😀😁😃😄😍	Laughing,[4] big grin,[5][6] grinning with glasses[8]
+x‑D
+xD	X‑D
+XD	😆😂
+☹️🙁😠😡😞😟😣😖	Frown,[4][5][6] sad,[12] angry,[8] pouting
+:'‑(
+:'(	:=(	😢😭	Crying[12]
+:'‑)
+:')	:"D	🥲🥹😂	Tears of happiness[12]
+D‑':	D:<	D:	D8	D;	D=	DX	😨😧😦😱😫😩	Horror, disgust, sadness, great dismay[5][6] (right to left)
+:‑O
+:O	:‑o
+:o	:-0	8‑0	>:O	=O
+=o
+=0
+
+😮😯😲	Surprise,[3] shock,[4][13][14] yawn[15]
+:-3
+:3	=3	x3
+X3	😺😸🐱	Cat face, curled mouth, cutesy,[16][17][18] playful, mischievous[19]
+>:3	😼	Lion smile,[19] evil cat
+:-*
+:*	
+:×	😗😙😚😘😍	Kiss[4]
+;‑)
+;)	*-)
+*)	;‑]
+;]	;^)
+;>
+
+:‑,	;D	;3	😉😜😘	Wink,[4][5][6] smirk[13][15]
+:‑P
+:P	X‑P
+XP	x‑p
+xp	:‑p
+:p	:‑Þ
+:Þ	:‑þ
+:þ	:‑b
+:b	d:	=p	>:P	😛😝😜🤑	Tongue sticking out, cheeky/playful,[4] blowing a raspberry
+:-/
+:/	:‑.	>:\	>:/	:\	=/	=\	:L	=L	:S	🫤🤔😕😟	Skeptical, annoyed, undecided, uneasy, hesitant[4]
+:‑|
+:|	😐😑	Straight face[5] no expression, indecision[12]
+:$	://)
+://3	😳😞😖	Embarrassed,[6] blushing[8]
+:‑X
+:X	:‑#
+:#	:‑&
+:&	🤐😶	Sealed lips, wearing braces,[4] tongue-tied[12]
+O:‑)
+O:)	0:‑3
+0:3	0:‑)
+0:)	0;^)	😇👼	Angel,[4][5][13] halo, saint,[12] innocent
+>:‑)
+>:)	}:‑)
+}:)	3:‑)
+3:)	>;‑)
+>;)	>:3
+;3	😈	Evil,[5] devilish[12]
+|;‑)	|‑O	B-)	😎😪	Cool,[12] bored, yawning[13]
+:‑J	😏😒	Tongue-in-cheek[20]
+#‑)		Partied all night[12]
+%‑)
+%)	😵😵‍💫😕🤕	Drunk,[12] confused
+:‑###..
+:###..	🤒😷🤢	Being sick[12]
+<:‑|		Dumb, dunce-like[13]
+',:-|	',:-l	🤨	Scepticism, disbelief, disapproval[21][22]
+:E	😬	Grimacing, nervous, awkward[23]
+8-X	8=X	x-3	x=3	☠️💀🏴‍☠️	Skull and crossbones[24]
+~:>	🐔🐓
+🌹	Rose[4][13]
+8====D	8===D	8=D	3=D	8=>	8===D~~~		Penis,[26] Ejaculation[27]
+5:‑)		Elvis Presley[13][15]
+*<|:‑)	🎅	Santa Claus[28]
+~(_8^(I)		Homer Simpson[13][29]
+=:o]		Bill Clinton[28]
+7:^]	,:‑)		Ronald Reagan[28]
+</3	<\3	💔	Broken heart[30]
+<3	❤️	Heart[30][25]
+🐟🐠	Fish, something's fishy,[13] Christian fish[8][25]
+\o/	🍻	Cheer "Yay, yay."[8]
+*\0/*		Cheerleader[8]
+o7	🫡	Salute[31]
+//0‑0\\		John Lennon[13][32]
+(V) (;,,;) (V)	(V)(°,,°)(V)		Zoidberg[33][34][35][24]
+v.v	._.	._.;	😔	Sadness, great dismay, disgust[5][6][25]
+QQ	qq	Qq	🥺😭😢	Crying[36]
+X_X
+x_x
+
++_+	X_x
+x_X
+
+😵☠️	Dead person,[37][38][39][40][41] fainted[42]
+<_<	>_>	<.<	>.>		Sideways look. Devious or guilty.[43][irrelevant citation]
+O_O
+o_o
+
+O-O
+o‑o
+
+O_o	o_O	😳	Surprise,[3] shock,[4][13] yawn[15]
+>.<	>_<	😣	Skeptical, annoyed, undecided, uneasy, hesitant[4]
+^5	o/\o	>_>^ ^<_<		High five[15]
+V.v.V	V=(° °)=V	🦀🦞	Crab,[26] Lobster
+(^^^)	🦈	Shark[44]
+|-o-| [-o-] |-o-|		Three TIE fighters[32]
+(::[]::)	🩹🤕❤️‍🩹	Bandage[25]
+🐟🐠	Darwin fish/Evolution fish[49]
+[̲̅$̲̅(̲̅1̲̅)̲̅$̲̅]	[̲̅$̲̅(̲̅5̲̅)̲̅$̲̅]	[̲̅$̲̅(̲̅1̲̅0̲̅)̲̅$̲̅]	[̲̅$̲̅(̲̅ιοο̲̅)̲̅$̲̅]	💵💸	Dollar notes[24][50]
+( ͡° ͜ʖ ͡°)	😏	The "Lenny Face", named and popularized on 4chan.[51] Used mostly to suggest mischief, imply sexual innuendo or a second hidden meaning behind a sentence, or is pasted over and over to spam online discussions.[52]
+ヽ༼ຈل͜ຈ༽ﾉ		"Raise Your Dongers", a meme originated from Twitch, unclear meaning[53][54]
+ಠ_ಠ	ಠ__ಠ	ಠ益ಠ	😐😑🤨	"Look of Disapproval"[55][56]
+⎛⎝(•ⱅ•)⎠⎞	◥▅◤	◢▅◣	🦇	Bat[57][24]
+(๑ˇεˇ๑)	😘	Kiss[58]
+(◕‿◕✿)	🙂🌸	"Flower Girl", a person with a flower attached to their head[59][60]
+( ༎ຶ ۝ ༎ຶ )	😭	Crying[59]
+(=ʘᆽʘ=)∫	🐱	Cat[61]
+ʕ •ᴥ•ʔ	ʕ ·(エ)· ʔ	ʕ – ㉨ – ʔ	⊂(￣(ｴ)￣)⊃	🐻🧸🐻‍❄️🐼	Bear[59]
+😣😖	Troubled[62][63]
+(';')	👶	Baby[62]
+(^^ゞ(^_^;)(-_-;)(~_~;) (・.・;)(・_・;)(・・;) ^^;^_^;(#^.^#)(^^;)	😅😳😓😥	Nervous, embarrassed,[62] troubled, shy,[63] sweat drop[8]
+(⁄ ⁄•⁄ω⁄•⁄ ⁄)	😳	Embarassed, flushed[59]
+(^.^)y-.o○(-.-)y-°°°	🚬	Smoking[62]
+(-_-)zzz	😴💤	Sleeping[62]
+(^_-)(^_-)-☆	😉😜	Wink[62]
+((+_+))(+o+)(°°)(°-°) (°.°)(°_°)(°_°>)(°レ°)	😕😶😵🙄	Confused[62]
+(o|o)		Ultraman[62]
+<(｀^´)>		N/A[62]
+^_^(°o°)(^_^)/(^O^)／(^o^)／(^^)/ (≧∇≦)/(/◕ヮ◕)/(^o^)丿∩(·ω·)∩(·ω·)^ω^	😀😅😆😃😄🙌	Joyful[62][63][64]
+(__)_(._.)__(_^_)_<(_ _)> <m(__)m>m(__)mm(_ _)m	🙇	Kowtow as a sign of respect, or dogeza for apology[62][63]
+(凸ಠ益ಠ)凸	🖕	Middle fingers[59]
+＼(°ロ＼)(／ロ°)／	🤔	Questioning[62]
+('_')(/_;)(T_T) (;_;)(;_;(;_:)(;O;)(:_;)(ToT)(Ｔ▽Ｔ) ;_;;-;;n;;;Q.QT.TTnTQQQ_Q	😭😢	Sad, crying[13][62][63][59]
+(ー_ー)!!(-.-)(-_-)(一一)(；一_一)	😒😩😑😞😔	Shame[62]
+(=_=)	😫😩😪	Tired[62]
+(=^・^=)(=^・・^=)=^_^=	😺😸😹😻😼😽🙀😿😾🐱	Cat[62][64]
+(..)(._.)	🙍😔	Looking down[62] in sadness or boredom
+^m^	🤭	Giggling with hand covering mouth[62]
+(・・?(?_?)	😕😵	Confusion[62]
+(－‸ლ)	🤦	Facepalm[65]
+>^_^<<^!^>^/^（*^_^*）§^.^§(^<^) (^.^)(^ム^)(^·^)(^.^)(^_^.)(^_^)(^^) (^J^)(*^.^*)^_^(#^.^#)（^—^）	😃😄☺️😁😀😍	Normal laugh[62]
+(^^)/~~~(^_^)/~(;_;)/~~~(^.^)/~~~(-_-)/~~~ ($··)/~~~(@^^)/~~~(T_T)/~~~(ToT)/~~~	👋	Waving[62]
+(V)o￥o(V)	👽👾	Alien Baltan[62]
+＼(~o~)／＼(^o^)／＼(-o-)／ ヽ(^。^)ノヽ(^o^)丿(*^0^*)	😍😀🙌💃	Excited[62]
+(*_*)(*_*;(+_+) (@_@)(@_@。(＠_＠;)＼(◎o◎)／！	😍	Amazed[62]
+!(^^)!		N/A[62]
+(*^^)v(^^)v(^_^)v（’-’*) (＾ｖ＾)(＾▽＾)(・∀・)(´∀`)(⌒▽⌒）	😂✌️	Laughing, cheerful[62][63]
+＼(^o^)／\(^o^)/		Hopeless[66][67]
+(~o~)(~_~)	😔😒😏	N/A[62]
+(^^ゞ	😙😚	N/A[62]
+ˊ＿>ˋ		Calmness[68]
+(p_-)(-_q)	🧐	N/A[62]
+((d[-_-]b))	🎧	Headphones, listening to music[62]
+(-"-)(ーー゛)(^_^メ)(-_-メ)(~_~メ)(－－〆) (・へ・)(｀´)<`～´><`ヘ´>(ーー;)	😟😓😬	Worried[62][63]
+(^0_0^)	🤓😎	Eyeglasses[62]
+( ..)φφ(..)	✍️📝	Jotting note[62]
+(●＾o＾●)(＾ｖ＾)(＾ｕ＾)(＾◇＾) ( ^)o(^ )(^O^)(^o^)(^○^))^o^( (*^▽^*)(✿◠‿◠)	😀😁😆😅😃😄	Happy[62][63]
+(￣ー￣)	😁	Grinning[63]
+(￣□￣;)°o°°O°:O o_Oo_0o.O(o.o)oO	😲😮😯	Surprised[3][63]
+(*´▽｀*)(*°∀°)=3		Infatuation[63]
+ᕕ( ᐛ )ᕗ	💃🕺	Dancing, swinging arms back and forth, "Happy Gary"[69]
+（ ﾟ Дﾟ)(°◇°)	😨😱😮😲	Shocked, surprised[63]
+(*￣m￣)	😬😠😡	Dissatisfied[63]
+ヽ(´ー｀)┌¯\_(ツ)_/¯¯\(°_o)/¯	🤷	Mellow, shrug[63][32]
+(´･ω･`)(‘A`)		Snubbed or deflated[63]
+(づ￣ ³￣)づ		Hugging/reaching and kissing[59]
+(*^3^)/~☆	😘😚😙😗	Blowing a kiss[70]
+.....φ(・∀・＊)		Studying is good[70]
+(-_-) zzz(︶｡︶✽)	😴💤	S
+🍵☕️	Cup of tea[62]
+☆彡☆ミ	🌠☄️💫🌟	Shooting star[62]
+>°)))彡(Q))><ヨヨ (°))<<>°))))彡<°)))彡>°))彡 <+))><<<*))>=<	🐠🐟🐡🦈🐬🐳🐋	Fish[62]
+<コ:彡 Ｃ:.ミ	🦑🐙	Squid, octopus[62]
+~>°)～～～	🐍	Snake[62]
+～°·_·°～	🦇	Bat[62]
+(°°)～		Tadpole[62]
+●～*	💣🧨
+😀	😁	😂	😃	😄	😅	😆	😇	😈	😉	😊	😋	😌	😍	😎	😏
+U+1F61x	😐	😑	😒	😓	😔	😕	😖	😗	😘	😙	😚	😛	😜	😝	😞	😟
+U+1F62x	😠	😡	😢	😣	😤	😥	😦	😧	😨	😩	😪	😫	😬	😭	😮	😯
+U+1F63x	😰	😱	😲	😳	😴	😵	😶	😷	😸	😹	😺	😻	😼	😽	😾	😿
+U+1F64x	🙀	🙁	🙂	🙃	🙄	🙅	🙆	🙇	🙈	🙉	🙊	🙋	🙌	🙍	🙎	🙏
+🤐
+🤑
+🤒
+🤓
+🤔
+🤕
+🤖
+🤗
+🤘
+🤙
+🤚
+🤛
+🤜
+🤝
+🤞
+🤟
+U+1F92x	
+🤠
+🤡
+🤢
+🤣
+🤤
+🤥
+🤦
+🤧
+🤨
+🤩
+🤪
+🤫
+🤬
+🤭
+🤮
+🤯
+U+1F93x	
+🤰
+🤱
+🤲
+🤳
+🤴
+🤵
+🤶
+🤷
+🤸
+🤹
+🤺
+🤻
+🤼
+🤽
+🤾
+🤿
