@@ -1,7 +1,7 @@
 #pragma once
 
 /// <summary>
-/// Check to see if animation has been disabled in Windows
+/// Check to see if minimize/restore animation has been disabled in Windows
 /// </summary>
 /// <returns></returns>
 internal BOOL GetDoAnimateMinimize()
@@ -16,19 +16,17 @@ internal BOOL GetDoAnimateMinimize()
 }
 
 /// <summary>
-/// Returns the rect of where we think the system tray is.
+/// Returns the rect of where the system tray is
 /// <para>If it can't find it, it returns a rect in the lower</para>
 /// <para>right hand corner of the screen</para>
 /// </summary>
-/// <param name="lpTrayRect"></param>
 internal void GetTrayWndRect(LPRECT lpTrayRect)
 {
 	//Reference: https://www.codeproject.com/Articles/735/Minimizing-windows-to-the-System-Tray
-	// First, we'll use a quick hack method. We know that the taskbar is a window
-	// of class Shell_TrayWnd, and the status tray is a child of this of class
-	// TrayNotifyWnd. This provides us a window rect to minimize to. Note, however,
-	// that this is not guaranteed to work on future versions of the shell. If we
-	// use this method, make sure we have a backup!
+	// Quick hack method. We know that the taskbar is a window of class Shell_TrayWnd,
+	// and the status tray is a child of this of class TrayNotifyWnd. This provides us 
+	// a window rect to minimize to. Note, however, that this is not guaranteed to work 
+	// on future versions of the shell. If we use this method, make sure we have a backup!
 	HWND hShellTrayWnd = FindWindowEx(NULL, NULL, TEXT("Shell_TrayWnd"), NULL);
 	if (hShellTrayWnd)
 	{
@@ -42,10 +40,9 @@ internal void GetTrayWndRect(LPRECT lpTrayRect)
 
 	// OK, we failed to get the rect from the quick hack. Either explorer isn't
 	// running or it's a new version of the shell with the window class names
-	// changed (how dare Microsoft change these undocumented class names!) So, we
-	// try to find out what side of the screen the taskbar is connected to. We
-	// know that the system tray is either on the right or the bottom of the
-	// taskbar, so we can make a good guess at where to minimize to
+	// changed. So, we try to find out what side of the screen the taskbar is
+	// connected to. We know that the system tray is either on the right or the
+	// bottom of the taskbar, so we can make a good guess at where to minimize to
 	APPBARDATA appBarData;
 	appBarData.cbSize = sizeof(appBarData);
 	if (SHAppBarMessage(ABM_GETTASKBARPOS, &appBarData))
@@ -72,26 +69,25 @@ internal void GetTrayWndRect(LPRECT lpTrayRect)
 			lpTrayRect->right = appBarData.rc.right - 16;
 			break;
 		}
-
 		return;
 	}
 
-	// Blimey, we really aren't in luck. It's possible that a third party shell
-	// is running instead of explorer. This shell might provide support for the
-	// system tray, by providing a Shell_TrayWnd window (which receives the
-	// messages for the icons) So, look for a Shell_TrayWnd window and work out
-	// the rect from that. Remember that explorer's taskbar is the Shell_TrayWnd,
+	// It's possible that a third party shell is running instead of explorer.
+	// This shell might provide support for the system tray, by providing a 
+	// Shell_TrayWnd window (which receives the messages for the icons) 
+	// So, look for a Shell_TrayWnd window and work out the rect from that. 
+	// Remember that explorer's taskbar is the Shell_TrayWnd,
 	// and stretches either the width or the height of the screen. We can't rely
 	// on the 3rd party shell's Shell_TrayWnd doing the same, in fact, we can't
 	// rely on it being any size. The best we can do is just blindly use the
 	// window rect, perhaps limiting the width and height to, say 150 square.
-	// Note that if the 3rd party shell supports the same configuraion as
+	// Note that if the 3rd party shell supports the same configuration as
 	// explorer (the icons hosted in NotifyTrayWnd, which is a child window of
 	// Shell_TrayWnd), we would already have caught it above
 	hShellTrayWnd = FindWindowEx(NULL, NULL, TEXT("Shell_TrayWnd"), NULL);
 
-#define DEFAULT_RECT_WIDTH 150
-#define DEFAULT_RECT_HEIGHT 30
+	constexpr int DEFAULT_RECT_WIDTH = 150;
+	constexpr int DEFAULT_RECT_HEIGHT = 30;
 
 	if (hShellTrayWnd)
 	{
@@ -100,18 +96,13 @@ internal void GetTrayWndRect(LPRECT lpTrayRect)
 			lpTrayRect->left = lpTrayRect->right - DEFAULT_RECT_WIDTH;
 		if (lpTrayRect->bottom - lpTrayRect->top > DEFAULT_RECT_HEIGHT)
 			lpTrayRect->top = lpTrayRect->bottom - DEFAULT_RECT_HEIGHT;
-
 		return;
 	}
 
-	// OK. Haven't found a thing. Provide a default rect based on the current work
-	// area
+	// Couldnt find anything, provide a default rect based on the current work area
 	SystemParametersInfo(SPI_GETWORKAREA, 0, lpTrayRect, 0);
 	lpTrayRect->left = lpTrayRect->right - DEFAULT_RECT_WIDTH;
 	lpTrayRect->top = lpTrayRect->bottom - DEFAULT_RECT_HEIGHT;
-
-#undef DEFAULT_RECT_WIDTH
-#undef DEFAULT_RECT_HEIGHT
 }
 
 /// <summary>
@@ -121,7 +112,7 @@ internal void GetTrayWndRect(LPRECT lpTrayRect)
 /// </summary>
 internal void WindowToFromTray(HWND hWnd, POINT from, POINT to, int duration_milliseconds, BOOL to_tray) 
 {
-	float frametime = 1000.f / GetRefreshRateHz(hWnd);
+	float frametime = 1000.f / _OS::_GetRefreshRateHz(hWnd);
 	float frames = duration_milliseconds / frametime;
 	RECT rc = { from.x,from.y,to.x,to.y };
 	SIZE offset = { (LONG)(RECTW(rc) / frames), (LONG)(RECTH(rc) / frames) }; //TODO(fran): should start faster and end slower, NOT be constant
@@ -159,52 +150,6 @@ internal void WindowToFromTray(HWND hWnd, POINT from, POINT to, int duration_mil
 
 		//TODO(fran): restore to the original style, it may be the window was originally layered
 
-		SetActiveWindow(hWnd);
-		SetForegroundWindow(hWnd);
-	}
-}
-
-/// <summary>
-/// Minimizes a window and creates an animation to make it look like it goes to the tray
-/// </summary>
-/// <param name="hWnd"></param>
-internal void MinimizeWndToTray(HWND hWnd)
-{//Thanks to: https://www.codeproject.com/Articles/735/Minimizing-windows-to-the-System-Tray
-	if (GetDoAnimateMinimize())
-	{
-		RECT rcFrom, rcTo;
-
-		// Get the rect of the window. It is safe to use the rect of the whole
-		// window - DrawAnimatedRects will only draw the caption
-		GetWindowRect(hWnd, &rcFrom);
-		GetTrayWndRect(&rcTo);
-
-		WindowToFromTray(hWnd, { rcFrom.left,rcFrom.top }, { rcTo.left,rcTo.top }, 200, true);
-	}
-	else ShowWindow(hWnd, SW_HIDE);// Just hide the window
-}
-
-/// <summary>
-/// Restores a window and makes it look like it comes out of the tray 
-/// <para>and makes it back to where it was before minimizing</para>
-/// </summary>
-/// <param name="hWnd"></param>
-internal void RestoreWndFromTray(HWND hWnd)
-{//Thanks to: https://www.codeproject.com/Articles/735/Minimizing-windows-to-the-System-Tray
-	if (GetDoAnimateMinimize())
-	{
-		// Get the rect of the tray and the window. Note that the window rect
-		// is still valid even though the window is hidden
-		RECT rcFrom, rcTo;
-		GetTrayWndRect(&rcFrom);
-		GetWindowRect(hWnd, &rcTo);
-
-		// Get the system to draw our animation for us
-		WindowToFromTray(hWnd, { rcFrom.left,rcFrom.top }, { rcTo.left,rcTo.top }, 200, false);
-	}
-	else {
-		// Show the window, and make sure we're the foreground window
-		ShowWindow(hWnd, SW_SHOW);
 		SetActiveWindow(hWnd);
 		SetForegroundWindow(hWnd);
 	}

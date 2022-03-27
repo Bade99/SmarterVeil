@@ -69,6 +69,9 @@
     <ClInclude Include="win32_tray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OS_windows.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

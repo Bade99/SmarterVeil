@@ -50,3 +50,5 @@
 #include <windowsx.h>
 #include "win32_msg_mapper.h"
 #include "win32_vk_mapper.h"
+
+#include <shellscalingapi.h> // SetProcessDpiAwareness (Windows 8)

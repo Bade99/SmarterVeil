@@ -170,6 +170,7 @@
     <ClInclude Include="basic_timing.h" />
     <ClInclude Include="basic_types.h" />
     <ClInclude Include="lang.h" />
+    <ClInclude Include="OS_windows.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="OS.h" />
     <ClInclude Include="veil.h" />

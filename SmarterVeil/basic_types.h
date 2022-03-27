@@ -30,6 +30,7 @@ typedef float  f32;
 typedef double f64;
 
 #define F32MAX (3.402823466e+38F)
+#define F32MIN (-F32MAX) //TODO(fran): idk whether simply flipping the sign works on all platforms
 
 typedef char8_t  utf8;
 typedef char16_t utf16;

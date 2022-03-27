@@ -19,28 +19,6 @@ internal HRESULT As(Origin * o, Dest * d)
     return o->QueryInterface(__uuidof(Dest), reinterpret_cast<void**>(d));
 }
 
-#define MovWindow(wnd, rc) MoveWindow(wnd, rc.left, rc.top, RECTW(rc), RECTH(rc), false)
-
-internal u32 GetRefreshRateHz(HWND wnd) //TODO(fran): OS code
-{
-    //TODO(fran): this may be simpler with GetDeviceCaps
-    u32 res = 60;
-    HMONITOR mon = MonitorFromWindow(wnd, MONITOR_DEFAULTTONEAREST);
-    if (mon) {
-        MONITORINFOEX nfo;
-        nfo.cbSize = sizeof(nfo);
-        if (GetMonitorInfo(mon, &nfo)) {
-            DEVMODE devmode;
-            devmode.dmSize = sizeof(devmode);
-            devmode.dmDriverExtra = 0;
-            if (EnumDisplaySettings(nfo.szDevice, ENUM_CURRENT_SETTINGS, &devmode)) {
-                res = devmode.dmDisplayFrequency;
-            }
-        }
-    }
-    return res;
-}
-
 #include <malloc.h>  // _alloca
 #include <stdio.h> // snprintf
 #include <d3d11.h>
@@ -61,8 +39,8 @@ internal u32 GetRefreshRateHz(HWND wnd) //TODO(fran): OS code
 
 
 struct veil_start_data {
-    HWND veil_wnd;
-    HWND veil_ui_wnd;
+    OS::window_handle veil_wnd;
+    OS::window_handle veil_ui_wnd;
     u64 main_thread_id;
 };
 
@@ -108,7 +86,11 @@ struct windows_compositor {
 };
 
 struct veil_state {
-    HWND wnd;
+    OS::window_handle wnd;
+
+    //TODO(fran): acquire & release
+    //language_manager LanguageManager;
+    //
 
     veil_ui_state ui;
     
@@ -119,6 +101,138 @@ struct veil_state {
     u32 locking_wait_ms;
 };
 
+internal void GetInput(ui_state* ui, MSG msg)
+{
+    user_input& ui_input = ui->input;
+    //TODO(fran): msg.hwnd is null when clicking inside the client area of the window, we cant know which window is being addressed if we had multiple ones (all this because PostThreadMessageW doesnt let you pass the hwnd, is there a way to pass it?)
+                //if (msg.hwnd == Veil->ui.wnd) { //Check for interesting messages to the UI
+
+    //IMPORTANT TODO(fran): now we have hwnds created on both threads we'd need to copy the extra handling that we have on specific messages on the main thread, eg SetCapture(),...
+    switch (msg.message)
+    {
+    case WM_DPICHANGED_CUSTOM:
+    {
+        ui->scaling = (f32)LOWORD(msg.wParam) / 96.f /*aka USER_DEFAULT_SCREEN_DPI */;
+        assert(LOWORD(msg.wParam) == HIWORD(msg.wParam));
+        //RECT suggested_window = *(RECT*)msg.lParam;
+        //MovWindow(Veil->wnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
+        ui->render_and_update_screen = true;
+    } break;
+    case WM_MOUSEMOVE:
+    {
+        POINT p{ GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam) };
+        POINT screenP = p;
+        MapWindowPoints(ui->wnd.hwnd, HWND_DESKTOP, &screenP, 1);
+
+        ui_input.mouseP = v2_from(p.x, p.y);
+
+        ui_input.screen_mouseP = v2_from(screenP.x, screenP.y);
+    } break;
+    case WM_LBUTTONDOWN:
+    {
+        ui_input.keys[input_key::left_mouse] = input_key_state::clicked;
+    } break;
+    case WM_LBUTTONUP:
+    {
+        ui_input.keys[input_key::left_mouse] = input_key_state::unclicked;
+    } break;
+    case WM_LBUTTONDBLCLK:
+    {
+        ui_input.keys[input_key::left_mouse] = input_key_state::doubleclicked;
+    } break;
+    case WM_RBUTTONDOWN:
+    {
+        ui_input.keys[input_key::right_mouse] = input_key_state::clicked;
+    } break;
+    case WM_RBUTTONUP:
+    {
+        ui_input.keys[input_key::right_mouse] = input_key_state::unclicked;
+    } break;
+    case WM_RBUTTONDBLCLK:
+    {
+        ui_input.keys[input_key::right_mouse] = input_key_state::doubleclicked;
+    } break;
+    case WM_SYSKEYDOWN:
+    case WM_KEYDOWN:
+    {
+        b32 ctrl_is_down = HIBYTE(GetKeyState(VK_CONTROL));
+        b32 alt_is_down = HIBYTE(GetKeyState(VK_MENU));
+        b32 shift_is_down = HIBYTE(GetKeyState(VK_SHIFT));
+
+        u8 vk = (u8)msg.wParam;
+
+        //TODO(fran): keyboard keys should also have clicked, pressed and unclicked states
+
+        switch (vk) {
+        case VK_LWIN: case VK_RWIN:
+        case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
+        case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
+        case VK_MENU:
+        case VK_F12:
+        {
+            ui_input.hotkey.vk = (u8)0;
+            ui_input.hotkey.translation_nfo = 0;
+        } break;
+        default:
+        {
+            ui_input.hotkey.vk = (u8)vk;
+            ui_input.hotkey.translation_nfo = msg.lParam;
+        } break;
+        }
+        ui_input.hotkey.mods = (ctrl_is_down ? MOD_CONTROL : 0) | (alt_is_down ? MOD_ALT : 0) | (shift_is_down ? MOD_SHIFT : 0);
+    } break;
+    case WM_HOTKEY: //NOTE(fran): system-wide global hotkey
+    {
+        i32 id = msg.wParam;
+        u16 mods = LOWORD(msg.lParam);
+        u8 vk = HIWORD(msg.lParam);
+        ui_input.global_hotkey_id = id;
+    } break;
+    case WM_MOUSEWHEEL:
+    {
+        //TODO(fran): we can also use the wParam to get the state of Ctrl, Shift, Mouse Click & others
+        f32 zDelta = (f32)GET_WHEEL_DELTA_WPARAM(msg.wParam) / (f32)WHEEL_DELTA;
+        //NOTE(fran): zDelta indicates the number of units to scroll (the unit will be determined by whoever handles the scroll)
+        ui_input.mouseVScroll = zDelta;
+    } break;
+    case WM_TRAY:
+    {
+        switch (LOWORD(msg.lParam))
+        {
+            //NOTE(fran): for some reason the tray only sends WM_LBUTTONDOWN once the mouse has been released, so here WM_LBUTTONDOWN counts as WM_LBUTTONUP, same for right click
+        case WM_LBUTTONDOWN:
+        {
+            ui_input.tray.on_unclick = true;
+        } break;
+        case WM_RBUTTONDOWN:
+        {
+            ui_input.tray.on_unrclick = true;
+        } break;
+        }
+    } break;
+    }
+    //}
+}
+
+internal void PreAdjustInput(user_input* ui_input)
+{
+    ui_input->hotkey = { 0 };
+    ui_input->global_hotkey_id = 0;//TODO(fran): we could also send the full info, id+vk+mods
+    ui_input->mouseVScroll = 0;
+
+    for (i32 i = 0; i < ArrayCount(ui_input->keys); i++)
+        if (ui_input->keys[i] == input_key_state::clicked || ui_input->keys[i] == input_key_state::doubleclicked)
+            ui_input->keys[i] = input_key_state::pressed;
+
+    //IMPORTANT NOTE(fran): We'll use Windows style right click handling, where it does not care about anything but the element that was under the mouse when the unrclick event happens. This means we wont have an interacting_with element and therefore we need to manually reset the key state in order to avoid infinite key repeats
+        //TODO(fran): this may need to be specialized for different OSs inside veil_ui
+    if (ui_input->keys[input_key::right_mouse] == input_key_state::unclicked)
+        ui_input->keys[input_key::right_mouse] = {};
+
+    ui_input->tray.on_unclick = false;
+    ui_input->tray.on_unrclick = false;
+}
+
 internal void ProcessMessages(veil_state* Veil)
 {
     TIMEDFUNCTION();
@@ -126,18 +240,8 @@ internal void ProcessMessages(veil_state* Veil)
     //IMPORTANT(fran): PeekMessageW _needs_ to be called with an HWND parameter of 0 in order to receive both window messages (eg WM_SIZE, ...) and _thread_ messages (eg WM_QUIT! which otherwise is only sometimes received if using a specific hwnd value for PeekMessageW)
     //INFO(fran): it may in the future be important to know that apparently (saythe docs) PeekMessageW does not remove WM_PAINT messages, the only way those are removed is by doing painting on the wndproc, that could mean that if we stopped answering to WM_PAINT our message queue would become crowded with old WM_PAINT messages
 
-    local_persistence user_input ui_input;
-    
-    ui_input.hotkey={ 0 };
-    ui_input.global_hotkey_id = 0;//TODO(fran): we could also send the full info, id+vk+mods
-    ui_input.mouseVScroll = 0;
-
-    for (i32 i = 0; i < ArrayCount(ui_input.keys); i++)
-        if (ui_input.keys[i] == input_key_state::clicked || ui_input.keys[i] == input_key_state::doubleclicked)
-            ui_input.keys[i] = input_key_state::pressed;
-    
-    ui_input.tray.on_unclick = false;
-    ui_input.tray.on_unrclick = false;
+    PreAdjustInput(&Veil->ui.input);
+    if (Veil->ui.context_menu) PreAdjustInput(&Veil->ui.context_menu->input);
 
     //TODO(fran): while resizing the window with the mouse we enter WM_NCLBUTTONDOWN and seem to be getting hooked from someone else who 'handles' the sizing effect by stretching our window, this is probably some Directx thing I need to set up correctly, we need to get rid of this, otherwise real resizing doesnt occur until the user releases the mouse
         //TODO(fran): messages are going straight to the wndproc, bypassing this
@@ -146,6 +250,21 @@ internal void ProcessMessages(veil_state* Veil)
         //auto _msgName = msgToString(msg.message); OutputDebugStringA(_msgName); OutputDebugStringA("\n");
 
         //TODO(fran): handle WM_ENDSESSION?
+        
+        //TODO(fran): handle multi-ui-windows / client-vs-nonclient mouse movements, the old window needs to be re-renderer & possibly have to mouse moved to infinity so any element that was on mouseover can go back to the normal state
+
+#ifdef APPEND_HWND_TO_MSG
+        if ((msg.hwnd == 0) && ((msg.message & 0xffff0000) != 0))
+        {
+            u16 halfhwnd = msg.message >> 16;
+
+            u16 veiluihalfhwnd = (size_t)Veil->ui.wnd & 0xffff;
+
+            if (veiluihalfhwnd == halfhwnd) msg.hwnd = Veil->ui.wnd;
+
+            msg.message &= 0xffff;
+        }
+#endif
 
         switch (msg.message)
         {
@@ -156,118 +275,23 @@ internal void ProcessMessages(veil_state* Veil)
             //NOTE(fran): no WM_DISPLAYCHANGE msg is sent when the _refresh rate_ is changed
             default:
             {
-                //TODO(fran): msg.hwnd is null when clicking inside the client area of the window, we cant know which window is being addressed if we had multiple ones (all this because PostThreadMessageW doesnt let you pass the hwnd, is there a way to pass it?)
-                //if (msg.hwnd == Veil->ui.wnd) { //Check for interesting messages to the UI
-                    switch (msg.message) 
-                    {
-                        case WM_DPICHANGED:
-                        {
-                            Veil->ui.scaling = (f32)LOWORD(msg.wParam) / 96.f /*aka USER_DEFAULT_SCREEN_DPI */;
-                            RECT suggested_window = *(RECT*)msg.lParam;
-                            MovWindow(Veil->wnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
-                            Veil->ui.render_and_update_screen = true;
-                        } break;
-                        case WM_MOUSEMOVE:
-                        {
-                            POINT p{ GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam) };
-                            POINT screenP = p; 
-                            MapWindowPoints(Veil->ui.wnd, HWND_DESKTOP, &screenP, 1);
-
-                            ui_input.mouseP = v2_from(p.x, p.y);
-
-                            ui_input.screen_mouseP = v2_from(screenP.x, screenP.y);
-                        } break;
-                        case WM_LBUTTONDOWN:
-                        {
-                            ui_input.keys[input_key::left_mouse] = input_key_state::clicked;
-                        } break;
-                        case WM_LBUTTONUP:
-                        {
-                            ui_input.keys[input_key::left_mouse] = input_key_state::unclicked;
-                        } break;
-                        case WM_LBUTTONDBLCLK:
-                        {
-                            ui_input.keys[input_key::left_mouse] = input_key_state::doubleclicked;
-                        } break;
-                        case WM_RBUTTONDOWN:
-                        {
-                            ui_input.keys[input_key::right_mouse] = input_key_state::clicked;
-                        } break;
-                        case WM_RBUTTONUP:
-                        {
-                            ui_input.keys[input_key::right_mouse] = input_key_state::unclicked;
-                        } break;
-                        case WM_RBUTTONDBLCLK:
-                        {
-                            ui_input.keys[input_key::right_mouse] = input_key_state::doubleclicked;
-                        } break;
-                        case WM_SYSKEYDOWN:
-                        case WM_KEYDOWN:
-                        {
-                            b32 ctrl_is_down = HIBYTE(GetKeyState(VK_CONTROL));
-                            b32 alt_is_down = HIBYTE(GetKeyState(VK_MENU));
-                            b32 shift_is_down = HIBYTE(GetKeyState(VK_SHIFT));
-
-                            u8 vk = (u8)msg.wParam;
-
-                            //TODO(fran): keyboard keys should also have clicked, pressed and unclicked states
-
-                            switch (vk) {
-                                case VK_LWIN: case VK_RWIN:
-                                case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
-                                case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
-                                case VK_MENU:
-                                case VK_F12:
-                                {
-                                    ui_input.hotkey.vk = (u8)0;
-                                    ui_input.hotkey.translation_nfo = 0;
-                                } break;
-                                default:
-                                {
-                                    ui_input.hotkey.vk = (u8)vk;
-                                    ui_input.hotkey.translation_nfo = msg.lParam;
-                                } break;
-                            }
-                            ui_input.hotkey.mods = (ctrl_is_down ? MOD_CONTROL : 0) | (alt_is_down ? MOD_ALT : 0) | (shift_is_down ? MOD_SHIFT : 0);
-                        } break;
-                        case WM_HOTKEY: //NOTE(fran): system-wide global hotkey
-                        {
-                            i32 id = msg.wParam;
-                            u16 mods = LOWORD(msg.lParam);
-                            u8 vk = HIWORD(msg.lParam);
-                            ui_input.global_hotkey_id = id;
-                        } break;
-                        case WM_MOUSEWHEEL:
-                        {
-                            //TODO(fran): we can also use the wParam to get the state of Ctrl, Shift, Mouse Click & others
-                            f32 zDelta = (f32)GET_WHEEL_DELTA_WPARAM(msg.wParam) / (f32)WHEEL_DELTA;
-                            //NOTE(fran): zDelta indicates the number of units to scroll (the unit will be determined by whoever handles the scroll)
-                            ui_input.mouseVScroll = zDelta;
-                        } break;
-                        case WM_TRAY:
-                        {
-                            switch (LOWORD(msg.lParam))
-                            {
-                                //NOTE(fran): for some reason the tray only sends WM_LBUTTONDOWN once the mouse has been released, so here WM_LBUTTONDOWN counts as WM_LBUTTONUP, same for right click
-                                case WM_LBUTTONDOWN:
-                                {
-                                    ui_input.tray.on_unclick = true;
-                                } break;
-                                case WM_RBUTTONDOWN:
-                                {
-                                    ui_input.tray.on_unrclick = true;
-                                } break;
-                            }
-                        } break;
-                    }
-                //}
+                ui_state* ui = !msg.hwnd ? &Veil->ui : Veil->ui.context_menu;
+                GetInput(ui, msg);
 
                 TranslateMessage(&msg); //TODO(fran): are this two doing anything?
-                DispatchMessageW(&msg);//send msg to wndproc
+                if(msg.hwnd)
+                    DispatchMessageW(&msg);//send msg to wndproc
             } break;
         }
     }
-    VeilUIProcessing(&Veil->ui, &ui_input);
+
+    //TODO(fran): one frame initialization for global ui things
+    //Temporary Arena initialization
+    ui_state* ui = &Veil->ui;
+    initialize_arena(&ui->LanguageManager->temp_string_arena, ui->LanguageManager->_temp_string_arena, sizeof(ui->LanguageManager->_temp_string_arena));
+
+    UIProcessing(&Veil->ui);
+    if(Veil->ui.context_menu) UIProcessing(Veil->ui.context_menu);
 }
 
 internal d3d11_renderer AcquireD3D11Renderer(HWND wnd)
@@ -445,7 +469,7 @@ internal windows_compositor AcquireWindowsCompositor(const veil_state* Veil)
     TESTHR(DCompositionCreateDevice(Veil->renderer.dxgiDevice, __uuidof(res.device), reinterpret_cast<void**>(&res.device))
         , "Failed to create Composition Device");
 
-    TESTHR(res.device->CreateTargetForHwnd(Veil->wnd, true /*Top most*/, &res.target)
+    TESTHR(res.device->CreateTargetForHwnd(Veil->wnd.hwnd, true /*Top most*/, &res.target)
         , "Failed to create Composition Target for the window");
 
     TESTHR(res.device->CreateVisual(&res.visual)
@@ -582,13 +606,13 @@ internal void RendererDraw(veil_state* Veil, ID3D11Texture2D* new_desktop_textur
 
 internal void VeilProcessing(veil_start_data* start_data)
 {
-    veil_state* Veil = (decltype(Veil))alloca(sizeof(*Veil)); //TODO(fran): zero initialize
+    veil_state* Veil = (decltype(Veil))alloca(sizeof(*Veil)); zero_struct(*Veil);
     Veil->wnd = start_data->veil_wnd;
     AcquireVeilUIState(&Veil->ui, start_data->veil_ui_wnd, start_data->main_thread_id); defer{ ReleaseVeilUIState(&Veil->ui); };
-    Veil->renderer = AcquireD3D11Renderer(start_data->veil_wnd); defer{ ReleaseD3D11Renderer(&Veil->renderer); };
+    Veil->renderer = AcquireD3D11Renderer(start_data->veil_wnd.hwnd /*TODO(fran): OS agnostic*/); defer{ReleaseD3D11Renderer(&Veil->renderer);};
     Veil->desktop_duplication = AcquireD3D11DesktopDuplication(&Veil->renderer); defer{ ReleaseD3D11DesktopDuplication(&Veil->desktop_duplication); };
     Veil->compositor = AcquireWindowsCompositor(Veil); defer{ ReleaseWindowsCompositor(&Veil->compositor); };
-    Veil->locking_wait_ms = (u32)(1000.f/(f32)GetRefreshRateHz(Veil->wnd)); //TODO(fran): maybe v-sync is a better option?
+    Veil->locking_wait_ms = (u32)(1000.f/(f32)OS::GetRefreshRateHz(Veil->wnd)); //TODO(fran): maybe v-sync is a better option?
     //TODO(fran): handle refresh rate changes, probably from D3D since the wndproc doesnt seem to get any special notification about it
 
     f64 IgnoreUpdateTimer = 0;//ms
@@ -618,10 +642,11 @@ internal void VeilProcessing(veil_start_data* start_data)
         
         if (old_show_veil != Veil->ui.show_veil)
         {
-            ShowWindow(Veil->wnd, Veil->ui.show_veil ? SW_SHOW : SW_HIDE);
+            if (Veil->ui.show_veil) OS::ShowWindow(Veil->wnd);
+            else OS::HideWindow(Veil->wnd);
             //Make sure the ui remains on top of the veil
-            if(Veil->ui.show_veil && IsWindowVisible(Veil->ui.wnd)/*not minimized*/) //TODO(fran): OS code, also im not sure IsWindowVisible is completely foolproof
-                SetWindowPos(Veil->ui.wnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE|  SWP_NOACTIVATE);
+            if (Veil->ui.show_veil && OS::IsWindowVisible(Veil->ui.wnd)/*not minimized*/)
+                OS::SendWindowToTop(Veil->ui.wnd);
         }
         //TODO(fran): when re-showing the veil it's topmost state is updated and sent to the top, which causes the veil ui to be occluded
 
@@ -630,6 +655,8 @@ internal void VeilProcessing(veil_start_data* start_data)
         //TODO(fran): while desktop duplication is active the computer cannot go to sleep, find a way to detect sleep requests and disable duplication
 
         //TODO(fran): handle rotated desktops
+
+        //TODO(fran): once I turn off my screen the veil will keep failing to get the next desktop img when the screen turns back on
 
         if (Veil->ui.show_veil) //TODO(fran): true veil processing stop, possibly requiring to release all desktop duplication objects, I dont want to simply stop calling GetNewDesktopImage because Windows will still store more update regions, idk how much extra memory that will entail (TODO(fran): check that), also (embarrassingly) we are using it as our frame timer
         {
@@ -644,9 +671,10 @@ internal void VeilProcessing(veil_start_data* start_data)
 
             if (new_desktop_texture && !IgnoreUpdate)
             {
-                RECT wndRc; GetClientRect(Veil->wnd, &wndRc);
+                //RECT wndRc; GetClientRect(Veil->wnd, &wndRc);
+                rc2 wnd_rc = OS::GetWindowRenderRc(Veil->wnd);
 
-                RendererDraw(Veil, new_desktop_texture, RECTW(wndRc), RECTH(wndRc));
+                RendererDraw(Veil, new_desktop_texture, wnd_rc.w, wnd_rc.h);
                 OutputToWindowsCompositor(Veil);
             }
         }
@@ -656,6 +684,5 @@ internal void VeilProcessing(veil_start_data* start_data)
         if (!Veil->ui.show_veil && !Veil->ui.render_and_update_screen && dt < (f32)Veil->locking_wait_ms)
             Sleep(Veil->locking_wait_ms - (u32)dt);
 
-        OutputDebugStringA("-----------\n");
     }
 }

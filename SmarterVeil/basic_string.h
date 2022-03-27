@@ -4,6 +4,8 @@
 //TODO(fran): HACK: had to fix it utf8 cause I could quite find the way to make a const_cast for any type
 #define const_temp_s(c_string) {.chars = const_cast<utf8*>(c_string), .cnt=s_cnt(c_string), .cnt_allocd=0}
 
+#define stack_s(type, char_cnt){.chars=(type*)alloca(char_cnt*sizeof(type)), .cnt=0, .cnt_allocd=char_cnt}
+
 template<typename T>
 internal constexpr u64 s_cnt(const T* s)
 { //does not include null terminator

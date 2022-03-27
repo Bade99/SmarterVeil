@@ -172,3 +172,16 @@ internal rc2 scalefromcenterconst_rc(rc2 rc, sz2 constant) {
 internal rc2 scalefromcenterconst_rc(rc2 rc, f32 constantX, f32 constantY) {
 	return scalefromcenterconst_rc(rc, { constantX, constantY });
 }
+
+//Generates a new rectangle of width w and height h and centered in relation to bounds
+internal rc2 get_centered_rc(rc2 bounds, f32 w, f32 h)
+{
+	rc2 res =
+	{
+		.x = bounds.x + (bounds.w - w) * .5f,
+		.y = bounds.y + (bounds.h - h) * .5f,
+		.w = w,
+		.h = h,
+	};
+	return res;
+}
