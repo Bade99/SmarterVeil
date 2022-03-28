@@ -10,6 +10,70 @@
 #pragma comment(lib, "d2d1")
 #pragma comment(lib, "dwrite")
 
+#include <initializer_list> 
+template<typename T, u64 _cnt>
+struct fixed_array { //TODO(fran): move to basic_array.h
+    T arr[_cnt];
+    u64 cnt; //cnt in use / cnt_used
+
+    constexpr u64 cnt_allocd()
+    {
+        u64 res = ArrayCount(this->arr);
+        return res;
+    }
+
+    T& operator[] (u64 idx)
+    {
+        return this->arr[idx];
+    }
+
+    const T& operator[] (u64 idx) const
+    {
+        return this->arr[idx];
+    }
+
+    void clear() { this->cnt = 0; zero_struct(this->arr); }
+
+    fixed_array<T, _cnt>& operator+=(const T e)//TODO(fran): see if this is a good idea
+    {
+        if (this->cnt + 1 > this->cnt_allocd()) crash();
+        this->arr[this->cnt++] = e;
+        return *this;
+    }
+
+    fixed_array<T, _cnt>& add(const T e)
+    {
+        return this += e;
+    }
+
+    fixed_array<T, _cnt>(std::initializer_list<T> elems)
+    {
+        this->cnt = 0;
+        assert(elems.size() <= this->cnt_allocd());
+        for (auto& e : elems) this->arr[this->cnt++] = e;
+    }
+
+    T* begin()
+    {
+        return this->cnt ? &arr[0] : nullptr;
+    }
+
+    T* end()
+    {
+        return this->cnt ? &arr[0] + this->cnt : nullptr;
+    }
+
+    const T* begin() const
+    {
+        return this->cnt ? &arr[0] : nullptr;
+    }
+
+    const T* end() const
+    {
+        return this->cnt ? &arr[0] + this->cnt : nullptr;
+    }
+};
+
 enum class ui_type {
     vpad=0,
     hpad,
@@ -108,10 +172,24 @@ struct element_sizing_desc {
     };
 };
 
+struct element_sizing_desc2 {
+    element_sizing_desc w;
+    element_sizing_desc h;
+};
+
 struct ui_sizer_element {
     ui_element* element; //NOTE(fran): the element itself can and will contain multiple other elements
     element_sizing_desc sizing_desc;
     ui_sizer_element* next;
+};
+
+constexpr u32 subelement_max_cnt = 10;
+
+struct ui_subelement_table_element {
+    ui_element* element;
+    fixed_array<element_sizing_desc2, subelement_max_cnt> sizing_desc;
+    f32 max_h;//NOTE(fran): used internally
+    ui_subelement_table_element* next;
 };
 
 enum class sizer_alignment : u8 {
@@ -210,15 +288,15 @@ enum class hotkey_string_state {
     placeholder = 0, validhk, invalidhk
 };
 
-enum class ui_image_type {
-    none=0,img, mask, render_commands //TODO(fran): remove 'none' once we implement the img hash table
-};
 
 #define _UI_IMAGE_RENDERCOMANDS_ARGS (ID2D1DeviceContext* renderer2D, ID2D1SolidColorBrush* brush, rc2 placement, void* context)
 #define UI_IMAGE_RENDERCOMANDS(name) void(name)_UI_IMAGE_RENDERCOMANDS_ARGS
 #define UI_IMAGE_RENDERCOMANDS_LAMBDA []_UI_IMAGE_RENDERCOMANDS_ARGS -> void
 typedef UI_IMAGE_RENDERCOMANDS(image_rendercommands);
 
+enum class ui_image_type {
+    none=0,img, mask, render_commands //TODO(fran): remove 'none' once we implement the img hash table
+};
 struct ui_image {
     ui_image_type type;
     //TODO(fran): add antialias mode and pixel snapping (round_rc()) option flags
@@ -250,6 +328,15 @@ struct ui_element {
 #endif
         } sizer;
         struct {
+            //NOTE(fran): this table contains only on element per row
+            fixed_array<f32, subelement_max_cnt> w_max_sizes;//TODO(fran): this could go in the one_frame arena
+            u32 columns;
+            ui_subelement_table_element* childs;
+#ifdef DEBUG_BUILD
+            v4 bk_color;
+#endif
+        } subelement_table;
+        struct {
             background_theme theme;
 
             void* context;
@@ -271,7 +358,7 @@ struct ui_element {
         } button;
         struct {
             contextmenu_button_theme theme;
-            ui_action OnMousehover;//NOTE(fran): mousehover indicates a prolonged period of continuous mouseover
+            ui_action OnMousehover;//NOTE(fran): mousehover indicates a prolonged period of continuous mouseover //TODO(fran): implement
             ui_action OnUnclick;
 
             ui_image image;
@@ -375,6 +462,7 @@ struct d2d_renderer {
 
     IDWriteFactory* fontFactory;
     IDWriteTextFormat* font;
+    //f32 font_point_size;
     //TODO(fran): look at IDWriteBitmapRenderTarget
 };
 
@@ -483,6 +571,7 @@ struct ui_state {
     u64 main_thread_id;//TODO(fran): the thread id can probably be gotten from the hwnd
     rc2 placement;
     f32 scaling;
+    f32 _last_scaling; //TODO(fran): find better solution, possibly to query for dpi on every frame
     b32 render_and_update_screen;
     b32 is_context_menu;
 
@@ -678,6 +767,58 @@ internal ui_element* VSizer(memory_arena* arena, sizer_alignment alignment, ui_s
 #define VSizer VSizer
 #define HSizer HSizer
 
+struct ui_sized_subelement_table_element {
+    fixed_array<element_sizing_desc2, subelement_max_cnt> sizing;
+    ui_element* element;
+};
+
+internal void SubETableAddElement(memory_arena* arena, ui_element* subetable, const ui_sized_subelement_table_element& new_elem)
+{
+    assert(subetable->type == ui_type::subelement_table);
+
+    ui_subelement_table_element** elements = &subetable->data.subelement_table.childs;
+    GetOnePastLast(elements);
+
+    *elements = push_type(arena, ui_subelement_table_element);
+    (*elements)->element = new_elem.element;
+    (*elements)->sizing_desc = new_elem.sizing;
+    (*elements)->max_h = 0;
+    (*elements)->next = nil;
+}
+
+internal ui_element* SubelementTable(memory_arena* arena, u32 column_cnt,  const ui_sized_subelement_table_element& e0 = {}, const ui_sized_subelement_table_element& e1 = {}, const ui_sized_subelement_table_element& e2 = {}, const ui_sized_subelement_table_element& e3 = {}, const ui_sized_subelement_table_element& e4 = {}, const ui_sized_subelement_table_element& e5 = {}, const ui_sized_subelement_table_element& e6 = {}, const ui_sized_subelement_table_element& e7 = {}, const ui_sized_subelement_table_element& e8 = {}, const ui_sized_subelement_table_element& e9 = {}, const ui_sized_subelement_table_element& e10 = {})
+{
+    ui_element* res = push_type(arena, ui_element);
+    res->type = ui_type::subelement_table;
+    res->placement = { 0 };
+    res->child = nil;
+    res->data.subelement_table.childs = nil;
+    res->data.subelement_table.columns = column_cnt;
+    res->data.subelement_table.w_max_sizes.clear();
+#ifdef DEBUG_BUILD
+    res->data.subelement_table.bk_color = { random01(),random01(),random01(),1.f };
+#endif
+    
+#define __SubETableAddElement(arena, res, sz_elem) if (sz_elem.element) SubETableAddElement(arena, res, sz_elem); else return res
+
+    __SubETableAddElement(arena, res, e0);
+    __SubETableAddElement(arena, res, e1);
+    __SubETableAddElement(arena, res, e2);
+    __SubETableAddElement(arena, res, e3);
+    __SubETableAddElement(arena, res, e4);
+    __SubETableAddElement(arena, res, e5);
+    __SubETableAddElement(arena, res, e6);
+    __SubETableAddElement(arena, res, e7);
+    __SubETableAddElement(arena, res, e8);
+    __SubETableAddElement(arena, res, e9);
+    __SubETableAddElement(arena, res, e10);
+
+#undef __SubETableAddElement
+
+    return res;
+}
+#define SubelementTable SubelementTable
+
 struct button_creation_args {
     memory_arena* arena;
     button_theme* theme;
@@ -864,6 +1005,12 @@ internal D2D1_RECT_F rc2_to_D2DRECT(rc2 rc)
     return res;
 }
 
+internal D2D1_POINT_2F v2_to_D2DPOINT(v2 v)
+{
+    D2D1_POINT_2F res = { .x=v.x, .y=v.y };
+    return res;
+}
+
 internal void PushInverseAxisAlignedClip(ID2D1DeviceContext* renderer2D, rc2 bounds, rc2 clipout_area /*do not render inside here*/, D2D1_ANTIALIAS_MODE antialias_mode)
 {
     //NOTE(fran): we assume the clipout_area is always contained within the bounds
@@ -1034,7 +1181,8 @@ internal const wchar_t* win32_GetUIFontName() {
     return request.match;
 }
 
-internal d2d_renderer AcquireD2DRenderer(d3d11_ui_renderer* d3d_renderer)
+//TODO(fran): make this scaling thing official in a better way, we could also simply act as if scaling always started as 1.f and then on the ui processing check the new one and recreate all fonts, though that seems wasteful
+internal d2d_renderer AcquireD2DRenderer(d3d11_ui_renderer* d3d_renderer, f32 scaling)
 {
     d2d_renderer res{0};
 
@@ -1066,7 +1214,7 @@ internal d2d_renderer AcquireD2DRenderer(d3d11_ui_renderer* d3d_renderer)
         DWRITE_FONT_WEIGHT_REGULAR,
         DWRITE_FONT_STYLE_NORMAL,
         DWRITE_FONT_STRETCH_NORMAL,
-        Point(12.0f),
+        Point(12.0f) * scaling,
         L"en-us", //TODO(fran): consider locale? (in my opinion it's just pointless)
         &res.font
     );
@@ -1293,15 +1441,83 @@ internal language_manager* AcquireLanguageManager()
     return res;
 }
 
-internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_thread_id, b32 is_context_menu = false/*TODO(fran): this is kinda pointless, we could create a ui_element that resizes the window it's in based on the size of its childs*/) //TODO(fran): ReleaseUIState
+internal f32 GetScalingForMonitor(HMONITOR monitor) //TODO(fran): OS code
+{
+    //stolen from: https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_win32.cpp
+    f32 res;
+    UINT xdpi = 96, ydpi = 96;
+
+    local_persistence HMODULE WinSHCore = LoadLibraryW(L"shcore.dll");
+    if (WinSHCore)
+    {
+        typedef HRESULT STDAPICALLTYPE get_dpi_for_monitor(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*); //GetDpiForMonitor
+        local_persistence get_dpi_for_monitor* GetDpiForMonitor = (get_dpi_for_monitor*)GetProcAddress(WinSHCore, "GetDpiForMonitor");
+        if (GetDpiForMonitor)
+        {
+            GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &xdpi, &ydpi);
+            assert(xdpi == ydpi);
+            res = xdpi / 96.0f;
+        }
+        else goto last_resort;
+    }
+    else
+    {
+        //TODO(fran): see if there are better alternatives (specifically for WXP & W7)
+    last_resort:
+        HDC dc = GetDC(HWND_DESKTOP); defer{ ReleaseDC(HWND_DESKTOP, dc); };
+        xdpi = GetDeviceCaps(dc, LOGPIXELSX);
+        ydpi = GetDeviceCaps(dc, LOGPIXELSY);
+        assert(xdpi == ydpi);
+        res = xdpi / 96.0f;
+    }
+    return res;
+}
+
+internal f32 GetScalingForWindow(OS::window_handle wnd) //TODO(fran): OS code
+{
+    f32 res;
+
+    typedef UINT WINAPI get_dpi_for_window(HWND); //GetDpiForWindow
+
+    local_persistence HMODULE WinUser = LoadLibraryW(L"user32.dll");
+    local_persistence get_dpi_for_window* GetDpiForWindow = (get_dpi_for_window*)GetProcAddress(WinUser, "GetDpiForWindow");
+    if (GetDpiForWindow)
+    {
+        res = (f32)GetDpiForWindow(wnd.hwnd) / 96.0f;
+        assert(res); //NOTE(fran): GetDpiForWindow returns 0 for an invalid hwnd
+    }
+    else
+    {
+        HMONITOR monitor = MonitorFromWindow(wnd.hwnd, MONITOR_DEFAULTTONEAREST);
+        res = GetScalingForMonitor(monitor);
+    }
+    return res;
+}
+
+internal f32 GetScalingForSystem()
+{
+    f32 res;
+    //TODO(fran): GetDpiForSystem, GetSystemDpiForProcess
+    HMONITOR monitor = MonitorFromWindow(HWND_DESKTOP, MONITOR_DEFAULTTOPRIMARY);
+    res = GetScalingForMonitor(monitor);
+
+    return res;
+}
+
+internal f32 GetNewScaling(ui_state* ui)
+{
+    f32 res = GetScalingForWindow(ui->wnd);
+    return res;
+}
+
+internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_thread_id, b32 is_context_menu = false/*TODO(fran): this is kinda pointless, we could create a ui_element that resizes the window it's in based on the size of its childs*/)
 {
     res->wnd = ui_wnd;
     res->main_thread_id = main_thread_id;
-    res->scaling = 1.f; //TODO(fran): get current dpi for the window
     res->interacting_with = nil;
     res->under_the_mouse = nil;
     res->keyboard_focus = nil;
-    res->placement = { 0 }; //TODO(fran): get this passed in?
+    res->placement = { 0 };
     res->render_and_update_screen = true;
     res->is_context_menu = is_context_menu;
 
@@ -1314,19 +1530,29 @@ internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_t
     LPVOID base_address = 0;
 #endif
 
+    //NOTE(fran): ui states can be reacquired, for that we must know wether or not this ui state has been previously initialized
+
+    b32 already_initialized = res->permanent_arena.base!=0;
+
+    if (!already_initialized)
+    {
+        res->scaling = GetNewScaling(res);
+        res->_last_scaling = res->scaling;
+
+        res->renderer = AcquireD3D11UIRenderer(res->wnd.hwnd);
+
+        res->renderer2D = AcquireD2DRenderer(&res->renderer, res->scaling);
+
+    #if UICOMPOSITOR
+        res.compositor = AcquireWindowsUICompositor(&res);
+    #endif
+    }
+
     //TODO(fran): require default zero initialization
-    void* mem = res->permanent_arena.base ? res->permanent_arena.base : VirtualAlloc(base_address, total_sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);//TODO(fran): use large pages
+    void* mem = already_initialized ? res->permanent_arena.base : VirtualAlloc(base_address, total_sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);//TODO(fran): use large pages
 
     initialize_arena(&res->permanent_arena, (u8*)mem, total_sz);
     assert(res->permanent_arena.base);
-
-    res->renderer = AcquireD3D11UIRenderer(res->wnd.hwnd);
-
-    res->renderer2D = AcquireD2DRenderer(&res->renderer);
-
-#if UICOMPOSITOR
-    res.compositor = AcquireWindowsUICompositor(&res);
-#endif
 
     zero_struct(res->global_registered_hotkeys);
 
@@ -1403,6 +1629,7 @@ internal void AcquireTrayIcon(ui_tray_state* res, OS::window_handle wnd, /*const
         .on_unrclick_context = veil_ui,
     };
 
+    //TODO(fran): (see if this is a real problem) when changing system dpi the tray icon gets stretched by Windows, which obviously being Windows means after some stretchings the icon is a complete blurry mess, can we update the icon on dpi change?
 }
 
 internal void ReleaseTrayIcon(ui_tray_state* tray)
@@ -1711,9 +1938,15 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
     auto ContextMenu = UI_ACTION_LAMBDA{
         veil_ui_state * veil_ui = (decltype(veil_ui))context;
 
-        assert(!veil_ui->context_menu);
-        veil_ui->context_menu = (ui_state*)malloc(sizeof(ui_state)); zero_struct(*veil_ui->context_menu);
-        AcquireUIState(veil_ui->context_menu, ContextMenuWindow(), veil_ui->main_thread_id, true);
+        if(veil_ui->context_menu)
+        {
+            AcquireUIState(veil_ui->context_menu, veil_ui->context_menu->wnd, veil_ui->main_thread_id, true);
+        }
+        else
+        {
+            veil_ui->context_menu = (ui_state*)malloc(sizeof(ui_state)); zero_struct(*veil_ui->context_menu);
+            AcquireUIState(veil_ui->context_menu, ContextMenuWindow(), veil_ui->main_thread_id, true);
+        }
 
         contextmenu_button_theme contextbutton_theme =
         {
@@ -1759,6 +1992,134 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
             .type = element_sizing_type::remaining,
         };
 
+        v2 contextmenu_imgbounds_scale_factor{ 1.0f, 0.35f }; //TODO(fran): that .35f seems pointless
+
+        #define contextmenu_img_line_width(max_l) (max_l * .25f)
+
+        ui_image restore_img =
+        {
+            .type = ui_image_type::render_commands,
+            .bounds = {.scale_factor = contextmenu_imgbounds_scale_factor},
+            .render_commands = { .commands = UI_IMAGE_RENDERCOMANDS_LAMBDA{
+                f32 l = minimum(placement.w, placement.h);
+                rc2 square = get_centered_rc(placement, l, l);
+                f32 line_width = contextmenu_img_line_width(l);
+                line_width = round(line_width);
+                f32 line_width_small = maximum(line_width * .5f, 1.f);
+
+                //TODO(fran): FIX: does not display correctly on different resolutions
+
+                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
+                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
+                renderer2D->SetAntialiasMode(antialias_mode);
+
+                f32 d = square.w * .3f;
+                f32 half_d = maximum(d * .5f, 1.f);
+                square = inflate_rc(square, -d);
+                square = translate_rc(square, -half_d, half_d);
+
+#if 0
+                rc2 square2 = translate_rc(square, half_d*2, -half_d*.5f);
+                square2 = inflate_rc(square2, d * .5f);
+
+                square = round_rc(square);
+                square2 = round_rc(square2);
+
+                renderer2D->DrawRectangle(rc2_to_D2DRECT(square), brush, line_width);
+
+                renderer2D->DrawLine(v2_to_D2DPOINT(square2.xy), v2_to_D2DPOINT(square2.top_right()), brush, line_width_small);
+                renderer2D->DrawLine(v2_to_D2DPOINT(square2.top_right()), v2_to_D2DPOINT(square2.bottom_right()), brush, line_width_small);
+#else
+                //IMPORTANT(fran): it seems direct2d draws outside the bounds if the line_width is bigger than one, meaning if line_width is 3 then 1.5 will be inside the bounds and 1.5 outside
+
+                square = round_rc(square);
+                line_width = round(line_width);
+                line_width_small = round(line_width_small);
+                
+                v2 p1 = { square.x + square.w * .25f, square.y - line_width / 2 - line_width_small*1.5f };
+                v2 p2 = { square.right() + line_width/2 + line_width_small * 1.5f, p1.y };
+
+                v2 p3 = p2;
+                v2 p4 = { p3.x, square.y + square.h * .75f + line_width_small / 2 };
+
+                renderer2D->DrawRectangle(rc2_to_D2DRECT(square), brush, line_width);
+
+                renderer2D->DrawLine(v2_to_D2DPOINT(p1), v2_to_D2DPOINT(p2), brush, line_width_small);
+                renderer2D->DrawLine(v2_to_D2DPOINT(p3), v2_to_D2DPOINT(p4), brush, line_width_small);
+                //TODO(fran): clean up this drawing code
+#endif
+            }},
+        };
+
+        ui_image minimize_img =
+        {
+            .type = ui_image_type::render_commands,
+            .bounds = {.scale_factor = contextmenu_imgbounds_scale_factor},
+            .render_commands = {.commands = UI_IMAGE_RENDERCOMANDS_LAMBDA{
+                f32 l = minimum(placement.w, placement.h);
+                rc2 square = get_centered_rc(placement, l, l);
+                f32 line_width = contextmenu_img_line_width(l);
+
+                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
+                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
+                renderer2D->SetAntialiasMode(antialias_mode);
+
+                f32 h = square.y + square.h;
+                v2 p1 = {.x = square.x, .y = h };
+                v2 p2 = {.x = square.right(), .y = h };
+                renderer2D->DrawLine(v2_to_D2DPOINT(p1), v2_to_D2DPOINT(p2), brush, line_width);
+            }},
+        };
+
+        ui_image maximize_img =
+        {
+            .type = ui_image_type::render_commands,
+            .bounds = {.scale_factor = contextmenu_imgbounds_scale_factor},
+            .render_commands = {.commands = UI_IMAGE_RENDERCOMANDS_LAMBDA{
+                f32 l = minimum(placement.w, placement.h);
+                rc2 square = get_centered_rc(placement, l, l);
+                f32 line_width = contextmenu_img_line_width(l);
+                f32 line_width_small = maximum(line_width * .5f, 1.f);
+
+                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
+                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
+                renderer2D->SetAntialiasMode(antialias_mode);
+
+                f32 d = square.w * .25f;
+                square = inflate_rc(square, -d);
+
+                square = round_rc(square);
+
+                renderer2D->DrawRectangle(rc2_to_D2DRECT(square), brush, line_width);
+            }},
+        };
+
+        ui_image close_img =
+        {
+            .type = ui_image_type::render_commands, //TODO(fran): this looks like a good case to use a _mask_
+            .bounds = {.scale_factor = contextmenu_imgbounds_scale_factor},
+            .render_commands = {.commands = UI_IMAGE_RENDERCOMANDS_LAMBDA{
+                f32 l = minimum(placement.w, placement.h);
+                rc2 square = get_centered_rc(placement, l, l);
+                f32 line_width = contextmenu_img_line_width(l);
+
+                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
+                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
+                renderer2D->SetAntialiasMode(antialias_mode);
+
+                square = round_rc(square);
+
+                v2 p1 = square.xy;
+                v2 p2 = square.bottom_right() + v2{.5f,.5f};
+
+                v2 p3 = square.top_right() + v2{.5f,-.5f};
+                v2 p4 = square.bottom_left();
+                //renderer2D->FillGeometry()
+                renderer2D->DrawLine(v2_to_D2DPOINT(p1), v2_to_D2DPOINT(p2), brush, line_width);
+                renderer2D->DrawLine(v2_to_D2DPOINT(p3), v2_to_D2DPOINT(p4), brush, line_width);
+            }},
+        };
+
         auto MaximizeOrRestore = UI_ACTION_LAMBDA{
             veil_ui_state* veil_ui = (decltype(veil_ui))context;
             if (IsWindowMaximized(veil_ui->wnd)) OS::RestoreWindow(veil_ui->wnd);
@@ -1786,7 +2147,7 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
 
         //TODO(fran): move ui structure code outside
         memory_arena* arena = &veil_ui->permanent_arena;
-#if 1
+
         local_persistence utf8 strs[6][50];
         s8 restore = { .chars = strs[0], .cnt_allocd = ArrayCount(strs[0]) };
         s8 move = { .chars = strs[1], .cnt_allocd = ArrayCount(strs[1]) };
@@ -1806,6 +2167,25 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
 
         close += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 6 });
         
+#if 1
+        veil_ui->context_menu->elements = SubelementTable(arena, 3,
+            //TODO(fran): disable Restore when not maximized & Move,Size,Maximize when maximized
+            {
+                .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}},
+                .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image=restore_img, .text = {.type = ui_string_type::str, .str = restore}, .on_unclick = {.context = veil_ui, .action = MaximizeOrRestore})
+            },
+            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::str, .str = move}, .on_unclick = {.context = (ui_state*)veil_ui, .action = KeyboardMove})
+            },
+            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::str, .str = size}, .on_unclick = {.context = (ui_state*)veil_ui, .action = KeyboardSize})
+            },
+            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image= minimize_img, .text = {.type = ui_string_type::str, .str = minimize}, .on_unclick = {.context = veil_ui, .action = common_ui_actions::MinimizeRestoreVeilUI})
+            },
+            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image= maximize_img, .text = {.type = ui_string_type::str, .str = maximize}, .on_unclick = {.context = veil_ui, .action = MaximizeOrRestore})
+            },
+            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image= close_img, .text = {.type = ui_string_type::str, .str = close}, .hotkey = close_hotkey, .on_unclick = {.context = &veil_ui->quit, .action = Quit})
+            }
+        );
+#else
         veil_ui->context_menu->elements = VSizer(arena, sizer_alignment::top,
             //TODO(fran): add a general HSizer with a new property: group_sizing::max that takes the max x value that it got from its childs and uses it for all childs
                 //Another idea would be a VHSizer that does its regular vertical sizing but then can also act on the horizontal component of all its childs by also using group_sizing::max
@@ -1845,7 +2225,7 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
         );
         //TODO(fran): this may be better suited for a component system
             //I like the component system idea, we can add a structure similar to the ui_elements, eg for a 'hotkey_button' you'd have hziser -> icon + text + (hrsizer -> hotkey_text)
-#else 
+#if 0 
         veil_ui->context_menu->elements = VSizer(arena, sizer_alignment::top,
             {.sizing = contextbutton_sz, .element = Button(.arena = arena, .theme = &contextbutton_theme, .context = veil_ui, .on_unclick = Restore,
                 .child = VSizer(arena, sizer_alignment::top,
@@ -1861,10 +2241,14 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
         //                       -define that right aligned sizers, when having an unbound rightmost position become left aligned sizers
         //                       (maybe I need both)
 #endif
+#endif
 
         rc2 r = rc2_from(veil_ui->input.screen_mouseP + v2{1.f,0.f}, {1.f,1.f}); //TODO(fran): HACK: I move the window one pixel to the side so it does not immediately collide with the first element in the context menu, on windows the first couple leftmost pixels of the menu are empty
         OS::MoveWindow(veil_ui->context_menu->wnd, r);
         OS::ShowWindow(veil_ui->context_menu->wnd);
+        BringWindowToTop(veil_ui->context_menu->wnd.hwnd); //TODO(fran): OS code //TODO(fran): this isnt required, but im sure we can find some edge cases where it is
+        SetForegroundWindow(veil_ui->context_menu->wnd.hwnd);//TODO(fran): OS code //NOTE: this is necessary because we reuse the windows, therefore the first time (when the window _is_ actually created) it automatically becomes the foreground window, but later uses of the window wont
+        
         //TODO(fran): instead of doing a direct show it's probably better to activate some interal flag, eg: b32 active;
     };
 
@@ -2219,13 +2603,14 @@ internal void AcquireVeilUIState(veil_ui_state* res, OS::window_handle veil_ui_w
     CreateVeilUIElements(res);
 
     AcquireTrayIcon(&res->tray, res->wnd, res);
+
+    //TODO(fran): SUPERBUG: right click to open context menu, change dpi, right click again -> universe explodes (potentially some dpi super-scaling bug)
 }
 
 internal void ReleaseVeilUIState(veil_ui_state* veil_ui) {
     ReleaseUIState(veil_ui);
 
     ReleaseTrayIcon(&veil_ui->tray);
-
 }
 
 internal void EnableRendering(ui_state* ui)
@@ -2255,11 +2640,29 @@ internal input_results InputUpdate(ui_element* elements, user_input* input)
         {
             case ui_type::sizer:
             {
-                ui_sizer_element* superchild = element->data.sizer.childs;
+                //TODO(fran): set element as no_collision or mouse_through
+                auto& data = element->data.sizer;
+                auto superchild = data.childs;
                 while (superchild) {
                     ui_element* child = superchild->element;
                     if (child) {
                     //while (child) {
+                        next_hot = InputUpdate(child, input).next_hot;
+                        if (next_hot) goto already_found; //NOTE(fran): early out since sizer elements should not overlap
+                        //child = child->child;
+                    }
+                    superchild = superchild->next;
+                }
+            } break;
+            case ui_type::subelement_table:
+            {
+                //TODO(fran): duplicate code, create a next_element() routine that gets the next superchild->element for any type of element that contains a list of elements
+                auto& data = element->data.subelement_table;
+                auto superchild = data.childs;
+                while (superchild) {
+                    ui_element* child = superchild->element;
+                    if (child) {
+                        //while (child) {
                         next_hot = InputUpdate(child, input).next_hot;
                         if (next_hot) goto already_found; //NOTE(fran): early out since sizer elements should not overlap
                         //child = child->child;
@@ -2786,7 +3189,7 @@ internal void RenderElement(ui_state* ui, ui_element* element)
 {
     //TODO(fran): get rid of the recursion
     //TODO(fran): translation transformation before going to the render code, in order to not have to correct for the xy position (renderer->SetTransform), we gonna need to create two rc2s for each element so we can have both the transformed and non transformed rect
-    while (element) //TODO(fran): should this while loop be here on in RendererDraw?
+    while (element) //TODO(fran): should this while loop be here or in RendererDraw?
     {
         D2D1_RECT_F drawrect = rc2_to_D2DRECT(element->placement);
         auto renderer = ui->renderer2D.deviceContext;
@@ -2851,7 +3254,7 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         } break;
         case ui_type::sizer: //TODO(fran): we could use the sizer as a poor man's way of implementing and rendering backgrounds
         {
-            auto data = element->data.sizer;
+            auto& data = element->data.sizer;
 #ifdef DEBUG_BUILD
             ID2D1SolidColorBrush* d2dBrush{ 0 }; defer{ d3d_SafeRelease(d2dBrush); };
             ID2D1SolidColorBrush* auraBrush{ 0 }; defer{ d3d_SafeRelease(auraBrush); };
@@ -2875,7 +3278,7 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             ui->renderer2D.deviceContext->FillRectangle(&aura_rect, auraBrush);
             #endif
 #endif
-            ui_sizer_element* superchild = element->data.sizer.childs;
+            ui_sizer_element* superchild = data.childs;
             while (superchild) {
                 ui_element* child = superchild->element;
                 while (child) {
@@ -2884,6 +3287,57 @@ internal void RenderElement(ui_state* ui, ui_element* element)
                 }
                 superchild = superchild->next;
             }
+        } break;
+        case ui_type::subelement_table:
+        {
+            auto& data = element->data.subelement_table;
+
+#ifdef DEBUG_BUILD
+            f32 linewidth = 1;
+            v2 line_start = element->placement.xy;
+            ID2D1SolidColorBrush* br{ 0 }; defer{ d3d_SafeRelease(br); };
+            v4 bk_color = data.bk_color;
+            auto bk_brush_props = D2D1::BrushProperties(bk_color.a);
+            TESTHR(ui->renderer2D.deviceContext->CreateSolidColorBrush((D2D1_COLOR_F*)&bk_color, &bk_brush_props, &br)
+                , "Failed to create Direct2D brush");
+#endif
+
+            auto superchild = data.childs;
+            while (superchild) {
+                ui_element* child = superchild->element;
+                while (child) {
+                    RenderElement(ui, child);
+                    child = child->child;
+                }
+
+#ifdef DEBUG_BUILD
+                //NOTE(fran): since we are doing the rendering in place part of the line will get occluded by the next child that gets rendered, not the end of the world, but should be solved & fixed
+                line_start.y += superchild->max_h;
+                v2 line_end = { element->placement.right(), line_start.y };
+
+                renderer->DrawLine(v2_to_D2DPOINT(line_start), v2_to_D2DPOINT(line_end), br, linewidth);
+#endif
+
+                superchild = superchild->next;
+            }
+
+#ifdef DEBUG_BUILD
+            {
+                linewidth *= .5f; //NOTE(fran): correction to get close to the width of the semi-occluded horizontal lines
+                v2 line_start{ element->placement.x, element->placement.y };
+                v2 line_end{ element->placement.x, element->placement.bottom() };
+
+                for (auto& h : data.w_max_sizes)
+                {
+                    line_start.x += h;
+                    line_end.x += h;
+                    renderer->DrawLine(v2_to_D2DPOINT(line_start), v2_to_D2DPOINT(line_end), br, linewidth);
+                }
+
+                renderer->DrawRectangle(rc2_to_D2DRECT(element->placement), br, linewidth);
+            }
+#endif
+
         } break;
         case ui_type::hpad:
         case ui_type::vpad:
@@ -2980,15 +3434,18 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             assert(data.theme.dimension.border_thickness == 0);
             DrawBackground(renderer, element, bk, data.theme.style);
 
+            //TODO(fran): either store or retrieve the placement for all subelements, instead of this HACK
+            sz2 avgchar = MeasureAverageTextCharacter(font_factory, ui->renderer2D.font);
+
             f32 min_bound = minimum(element->placement.w, element->placement.h);
-            rc2 img_placement{ .x=element->placement.x, .y=element->placement.y, .w=min_bound, .h=min_bound };
+            rc2 img_placement{ .x=element->placement.x + avgchar.w, .y=element->placement.y, .w=min_bound, .h=min_bound };
             rc2 img_bounds = scalefromcenter_rc(img_placement, data.image.bounds.scale_factor);
             DrawImage(renderer, data.image, img_bounds, fg);
 
             s8 text = GetUIStringStr(ui, data.text);
             rc2 text_placement =
             {
-                .x = img_placement.right(),
+                .x = img_placement.right() + avgchar.w,
                 .y = element->placement.y,
                 .w = distance(element->placement.right(), text_placement.x),
                 .h = element->placement.h,
@@ -2999,12 +3456,12 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             {
                 .x = text_output_rc.right(),
                 .y = element->placement.y,
-                .w = distance(element->placement.right(), hotkey_text_placement.x),
+                .w = distance(element->placement.right(), hotkey_text_placement.x) - avgchar.w,
                 .h = element->placement.h
             };
-            s8 hotkey = stack_s(utf8, 100);
+            s8 hotkey = stack_s(s8, 100);
             OS::HotkeyToString(data.hotkey, &hotkey);
-            RenderText(renderer, ui->renderer2D.font, hotkey.chars, hotkey.cnt, fg, hotkey_text_placement, horz_text_align::left, vert_text_align::center, true);
+            RenderText(renderer, ui->renderer2D.font, hotkey.chars, hotkey.cnt, fg, hotkey_text_placement, horz_text_align::right, vert_text_align::center, true); //TODO(fran): on Windows horizontal alignment should actually be left & placed after the longest text element in the context menu
 
         } break;
         default: crash();
@@ -3091,10 +3548,13 @@ internal f32 calc_nonclient_caption_h(f32 dpi_scaling) //TODO(fran): OS code
 
     RECT testrc{ 0,0,100,100 }; 
     RECT ncrc = testrc;
-    //TODO(fran): dependent on the dpi of the specific window
-    AdjustWindowRect(&ncrc, WS_OVERLAPPEDWINDOW, FALSE/*no menu*/);
+
+    local_persistence f32 dpicorrection = GetScalingForSystem(); assert(dpicorrection);
+    //NOTE(fran): AdjustWindowRect retains the dpi of the system when the app started, therefore if we started on a 125% dpi system AdjustWindowRect will _always_ return the value scaled by 1.25f, and so on, in order to correct for that we retrieve the system dpi at the time of our app starting and divide by it to obtain the unscaled result
+        
     //TODO(fran): AdjustWindowRectExForDpi
-    f32 h = distance(testrc.top, ncrc.top) * dpi_scaling;
+    AdjustWindowRect(&ncrc, WS_OVERLAPPEDWINDOW, FALSE/*no menu*/);
+    f32 h = (distance(testrc.top, ncrc.top) / dpicorrection) * dpi_scaling;
 
     res = h;
 
@@ -3220,10 +3680,79 @@ internal f32 GetElementH(sz2 bounds, element_sizing_desc sz_desc, ui_element* el
     return h;
 }
 
+enum class ui_subelement_type {
+    text=0,
+    image,
+    hotkey,
+};
+
+struct ui_subelement {
+    ui_subelement_type type;
+    union {
+        ui_string text;
+        ui_image image;
+        ui_hotkey hotkey;
+    };
+};
+
+ui_subelement SubE(const ui_string& text) { return { .type = ui_subelement_type::text, .text = text }; }
+ui_subelement SubE(const ui_image& image) { return { .type = ui_subelement_type::image, .image = image }; }
+ui_subelement SubE(const ui_hotkey& hotkey) { return { .type = ui_subelement_type::hotkey, .hotkey= hotkey }; }
+ui_subelement SubE(OS::hotkey_data& hotkey_data) { return { .type = ui_subelement_type::hotkey, .hotkey = {.hk=&hotkey_data, .id=0} }; }
+
+sz2 GetSubelementWH(sz2 bounds, element_sizing_desc2 sz_desc, const ui_subelement* elem, ui_state* ui)
+{
+    //TODO(fran): use sz_desc
+    assert(sz_desc.h.type == element_sizing_type::font);
+    assert(sz_desc.w.type == element_sizing_type::font);
+
+    sz2 res;
+    switch (elem->type)
+    {
+        case ui_subelement_type::text:
+        {
+            s8 text = GetUIStringStr(ui, elem->text);
+
+            sz2 measurement = MeasureText(ui->renderer2D.fontFactory, ui->renderer2D.font, text.chars, text.cnt, rc2_from({ 0,0 }, bounds), horz_text_align::left, vert_text_align::top, true).wh;
+
+            sz2 avgchar = MeasureAverageTextCharacter(ui->renderer2D.fontFactory, ui->renderer2D.font);
+
+            res = { measurement.w + sz_desc.w.font.w_extra_chars * avgchar.w, measurement.h * sz_desc.h.font.v_scale_factor };
+
+        } break;
+        case ui_subelement_type::image:
+        {
+            assert(sz_desc.h.type == element_sizing_type::font);
+
+            s8 text = const_temp_s(u8"_");
+            sz2 measurement = MeasureText(ui->renderer2D.fontFactory, ui->renderer2D.font, text.chars, text.cnt, rc2_from({ 0,0 }, bounds), horz_text_align::left, vert_text_align::top, true).wh;
+            //NOTE(fran): here measurement acts as both measurement & avgchar
+
+            res.h = measurement.h * sz_desc.h.font.v_scale_factor;
+            res.w = res.h + sz_desc.w.font.w_extra_chars * measurement.w;
+
+        } break;
+        case ui_subelement_type::hotkey:
+        {
+            s8 text = stack_s(s8, 100);
+            OS::HotkeyToString(*elem->hotkey.hk, &text);
+
+            sz2 measurement = MeasureText(ui->renderer2D.fontFactory, ui->renderer2D.font, text.chars, text.cnt, rc2_from({ 0,0 }, bounds), horz_text_align::left, vert_text_align::top, true).wh;
+
+            sz2 avgchar = MeasureAverageTextCharacter(ui->renderer2D.fontFactory, ui->renderer2D.font);
+
+            res = { measurement.w + sz_desc.w.font.w_extra_chars * avgchar.w, measurement.h * sz_desc.h.font.v_scale_factor };
+
+        } break;
+        default: { crash(); } break;
+    }
+    return res;
+}
+
 //TODO(fran): separate resize & getbottom functions with if constexpr (do_resize), we're probably gonna need to use templates: template <b32 do_resize>. Do it after the whole thing has been completely implemented and debugged, debugging templates is never fun
 //TODO(fran): support for placing things inside others. That would be a good use for the 'next' pointer inside ui_element, to function as 'childs' (better change the name), and have there a sizer that receives the rectangle of the parent element as the bounds
 //TODO(fran): can I somehow avoid passing the veil_ui? I simply need it to measure some fonts
-local_persistence f32 maxX=F32MIN; //TODO(fran): quick testing HACK, make this official in some way
+//local_persistence f32 maxX=F32MIN; //TODO(fran): quick testing HACK, make this official in some way
 internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* element, b32 do_resize) 
 {
     //TODO(fran): while loop over element->next in order to have individual root elements, may be better as a separate specific function, since the rectangles should be handled separately for each root
@@ -3368,7 +3897,7 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
 
                         rc2 new_bounds{ xy.x,xy.y,w,h };
 
-                        #if 0
+                        #if 1
                         if(do_resize) _GetElementBottomRight(ui, new_bounds, child, do_resize);
                         #else
                         maxX = maximum(maxX, _GetElementBottomRight(ui, new_bounds, child, do_resize).x);
@@ -3416,6 +3945,73 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
 #endif
             return res;
         } break;
+        case ui_type::subelement_table:
+        {
+            auto& data = element->data.subelement_table;
+
+            v2 xy = bounds.p;
+
+#ifdef DEBUG_BUILD
+            v2 stored_xy = xy;
+#endif
+
+            ui_subelement_table_element* superchild = data.childs;
+            auto& columns = data.w_max_sizes;
+            columns.clear();
+            columns.cnt = data.columns; assert(columns.cnt);
+            while (superchild)
+            {
+                ui_element* child = superchild->element;
+                if (child) {
+                    superchild->max_h = 0;
+                    switch (child->type)
+                    {
+                        case ui_type::contextmenu_button:
+                        {
+                            auto& child_data = child->data.contextmenu_button;
+
+                            ui_subelement subelems[] = { SubE(child_data.image), SubE(child_data.text), SubE(child_data.hotkey) };
+                            assert(ArrayCount(subelems) <= columns.cnt);
+
+                            for (u32 i = 0; i < ArrayCount(subelems); i++)
+                            {
+                                sz2 dim = GetSubelementWH(bounds.wh, superchild->sizing_desc[i], &subelems[i], ui);
+                                superchild->max_h = maximum(dim.h, superchild->max_h);
+                                columns[i] = maximum(dim.w, columns[i]);
+                            }
+                        } break;
+                        default: { crash(); } break;
+                    }
+                }
+                superchild = superchild->next;
+            }
+            
+            f32 w=0;
+            for (auto subw : columns) w += subw;
+
+            superchild = data.childs;
+            while (superchild)
+            {
+                ui_element* child = superchild->element;
+                if (child) {
+                    
+                    f32 h = superchild->max_h;
+
+                    rc2 new_bounds{ xy.x,xy.y,w,h };
+
+                    xy.y = maximum(xy.y, _GetElementBottomRight(ui, new_bounds, child, do_resize).y); //TODO(fran): the max check seems unnecessary at best and wrong when elements go beyond the height of the bounds
+                }
+                superchild = superchild->next;
+            }
+
+            xy.x += w;//NOTE(fran): only at the end do we move in x //TODO(fran): we should add extra info to the return value, eg use an rc2, so that the next guy has the knowledge of where to start depending on its situation, if it wants to go right of the element it queries for the right pos, if it wants to go below it can query that too
+
+#ifdef DEBUG_BUILD
+            if (do_resize) element->placement = rc2_from(stored_xy, xy - stored_xy);
+#endif
+            return xy;
+
+        } break;
         default:
         {
             v2 xy = { bounds.x, bounds.y };
@@ -3441,9 +4037,9 @@ internal v2 ResizeElement(ui_state* ui, rc2 bounds, ui_element* element)
     TIMEDFUNCTION();
     if (ui->is_context_menu) //TODO(fran): this path does not need to call _GetElementBottomRight again, we can already resize the elements to their correct place and then resize the window
     {
-        maxX = F32MIN;
-        sz2 new_bounds = _GetElementBottomRight(ui, { 0,0,1000,1000 }, element, false);
-        new_bounds.x = maxX;
+        //maxX = F32MIN;
+        sz2 new_bounds = _GetElementBottomRight(ui, { 0,0,F32MAX,F32MAX }, element, false);
+        //new_bounds.x = maxX;
         if ((i32)ui->placement.w != (i32)new_bounds.w || (i32)ui->placement.h != (i32)new_bounds.h)
         {
             OS::MoveWindow(ui->wnd, rc2_from(OS::GetWindowScreenRc(ui->wnd).xy, new_bounds));
@@ -3521,13 +4117,63 @@ internal void ScaleUIFont(d2d_renderer* renderer2D, f32 last_scaling, f32 new_sc
     assert(renderer2D->font);
 }
 
+internal void SetDPIAware()
+{
+    typedef BOOL WINAPI set_process_dpi_aware(void);
+    typedef HRESULT STDAPICALLTYPE set_process_dpi_awareness(PROCESS_DPI_AWARENESS);
+    typedef BOOL WINAPI set_process_dpi_awareness_context(DPI_AWARENESS_CONTEXT);
+
+    HMODULE WinUser = LoadLibraryW(L"user32.dll");
+    set_process_dpi_awareness_context* SetProcessDpiAwarenessContext = (set_process_dpi_awareness_context*)GetProcAddress(WinUser, "SetProcessDpiAwarenessContext");
+    if (SetProcessDpiAwarenessContext)
+    {
+        SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    }
+    else
+    {
+        HMODULE WinSHCore = LoadLibraryW(L"SHCore.dll");
+        if (WinSHCore)
+        {
+            set_process_dpi_awareness* SetProcessDpiAwareness = (set_process_dpi_awareness*)GetProcAddress(WinSHCore, "SetProcessDpiAwareness");
+
+            if (SetProcessDpiAwareness)
+            {
+                auto ret = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+                if (FAILED(ret))
+                {
+                    ret = SetProcessDpiAwareness(PROCESS_SYSTEM_DPI_AWARE);
+                    if (FAILED(ret)) goto last_resort;
+                }
+            }
+        }
+        else {
+        last_resort:
+            set_process_dpi_aware* SetProcessDPIAware = (set_process_dpi_aware*)GetProcAddress(WinUser, "SetProcessDPIAware");
+            if (SetProcessDPIAware)
+            {
+                SetProcessDPIAware();
+            }
+        }
+    }
+}
+
 internal void UIProcessing(ui_state* ui)
 {
     ui->render_and_update_screen = false;
 
+    if (ui->is_context_menu && GetForegroundWindow() != ui->wnd.hwnd) //TODO(fran): OS code
+    {
+        b32 contextmenutesting = false;
+#ifdef DEBUG_BUILD
+        contextmenutesting = true;
+#endif
+        if(OS::IsWindowVisible(ui->wnd) && !contextmenutesting) OS::HideWindow(ui->wnd);
+        return; //NOTE(fran): context menus arent processed once they stop being the foreground window
+    }
+
     //TODO(fran): (Windows) enable rendering when the mouse enters any of the 4 resize borders
     { //TODO(fran): find best place for this code, maybe it should be smth we get from the caller
-        local_persistence rc2 last_placement{0};
+        rc2 last_placement = ui->placement;
         ui->placement = OS::GetWindowRenderRc(ui->wnd);
 
         if (ui->placement.w != last_placement.w || ui->placement.h != last_placement.h)
@@ -3538,13 +4184,17 @@ internal void UIProcessing(ui_state* ui)
 
     { //TODO(fran): find the best place to put this
         //TODO(fran): make this official in some better way
-        local_persistence f32 last_scaling= ui->scaling;
-        if (ui->scaling != last_scaling)
+        
+        //assert(ui->scaling == GetNewScaling(ui)); //TODO(fran): use GetNewScaling(ui), this assertion fails cause it actually updates faster than ui->scaling
+
+        utf8 scalingstr[20]; snprintf((char*)scalingstr, ArrayCount(scalingstr), "scaling:(%.2f)\n", GetNewScaling(ui)); OutputDebugStringA((char*)scalingstr);
+
+        if (ui->scaling != ui->_last_scaling)
         {
             EnableRendering(ui);
-            ScaleUIFont(&ui->renderer2D, last_scaling, ui->scaling);
+            ScaleUIFont(&ui->renderer2D, ui->_last_scaling, ui->scaling);
         }
-        last_scaling = ui->scaling;
+        ui->_last_scaling = ui->scaling;
     }
 
     //CheckMouseExitsBounds(ui);
@@ -3556,7 +4206,7 @@ internal void UIProcessing(ui_state* ui)
 
     //TODO(fran): disable IME window
 
-    assert(ui->elements->type == ui_type::sizer);
+    assert(ui->elements->type == ui_type::sizer || ui->elements->type == ui_type::subelement_table);
     //TODO(fran): multiple root elements
 
     f32 offsetY = IsWindowMaximized(ui->wnd) ? OS::GetWindowTopMargin(ui->wnd) : 0;

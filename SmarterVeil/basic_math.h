@@ -111,6 +111,12 @@ v2 hadamard(v2 a, v2 b) {
 	return res;
 }
 
+v2 round(v2 v)
+{
+	v2 res = v2_from(round_to_i32(v.x), round_to_i32(v.y));
+	return res;
+}
+
 internal rc2 add_rc(rc2 r1, rc2 r2) {
 	rc2 res =
 	{

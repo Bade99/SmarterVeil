@@ -116,7 +116,6 @@ internal void GetInput(ui_state* ui, MSG msg)
         assert(LOWORD(msg.wParam) == HIWORD(msg.wParam));
         //RECT suggested_window = *(RECT*)msg.lParam;
         //MovWindow(Veil->wnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
-        ui->render_and_update_screen = true;
     } break;
     case WM_MOUSEMOVE:
     {
@@ -279,6 +278,7 @@ internal void ProcessMessages(veil_state* Veil)
                 GetInput(ui, msg);
 
                 TranslateMessage(&msg); //TODO(fran): are this two doing anything?
+                //if (msg.message == WM_DPICHANGED) DebugBreak();
                 if(msg.hwnd)
                     DispatchMessageW(&msg);//send msg to wndproc
             } break;
