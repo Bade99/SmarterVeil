@@ -14,6 +14,10 @@ namespace OS { //Custom types common to all OSes
 		clickthrough = 1 << 3 //All input is passed through the window to windows below it
 	};
 	constexpr window_creation_flags contextmenu = (window_creation_flags)(topmost | notaskbar);
+
+	enum class cursor_style {
+		arrow = 0, text, hand
+	};
 }
 
 #ifdef OS_WINDOWS

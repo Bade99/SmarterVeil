@@ -221,41 +221,12 @@ enum class interaction_state {
 #define _UI_ACTION_ARGS (ui_element* element, void* context)
 #define UI_ACTION(name) _UI_ACTION_RET (name) _UI_ACTION_ARGS
 #define UI_ACTION_LAMBDA []_UI_ACTION_ARGS -> _UI_ACTION_RET
-typedef UI_ACTION(action_on_unclick);
-typedef UI_ACTION(action_on_unrclick);
-
 typedef UI_ACTION(_ui_action);
 
 struct ui_action {
     void* context;
     _ui_action* action;
 };
-
-#define BUTTON_ACTION_ON_UNCLICK(name) void(name)(ui_element* element, void* context)
-#define BUTTON_ACTION_ON_UNCLICK_LAMBDA [](ui_element* element, void* context) -> void
-typedef BUTTON_ACTION_ON_UNCLICK(button_action_on_unclick);
-
-//TODO(fran): we could store a specific context param for each function inside the element object
-
-#define BUTTON_ACTION_ON_CLICK(name) BUTTON_ACTION_ON_UNCLICK(name)
-#define BUTTON_ACTION_ON_CLICK_LAMBDA BUTTON_ACTION_ON_UNCLICK_LAMBDA 
-typedef BUTTON_ACTION_ON_CLICK(button_action_on_click);
-
-#define BUTTON_ACTION_ON_DOUBLECLICK(name) BUTTON_ACTION_ON_UNCLICK(name)
-#define BUTTON_ACTION_ON_DOUBLECLICK_LAMBDA BUTTON_ACTION_ON_UNCLICK_LAMBDA 
-typedef BUTTON_ACTION_ON_DOUBLECLICK(button_action_on_doubleclick);
-
-#define BACKGROUND_ACTION_ON_CLICK(name) BUTTON_ACTION_ON_UNCLICK(name)
-#define BACKGROUND_ACTION_ON_CLICK_LAMBDA BUTTON_ACTION_ON_UNCLICK_LAMBDA 
-typedef BACKGROUND_ACTION_ON_CLICK(background_action_on_click);
-
-#define BACKGROUND_ACTION_ON_DOUBLECLICK(name) BUTTON_ACTION_ON_UNCLICK(name)
-#define BACKGROUND_ACTION_ON_DOUBLECLICK_LAMBDA BUTTON_ACTION_ON_UNCLICK_LAMBDA 
-typedef BACKGROUND_ACTION_ON_DOUBLECLICK(background_action_on_doubleclick);
-
-#define GLOBALHOTKEY_ACTION_ON_TRIGGERED(name) void(name)(ui_element* element, void* context)
-#define GLOBALHOTKEY_ACTION_ON_TRIGGERED_LAMBDA [](ui_element* element, void* context) -> void
-typedef GLOBALHOTKEY_ACTION_ON_TRIGGERED(globalhotkey_action_on_triggered);
 
 #define _UI_STRING_DYN_ID_RET u32
 #define _UI_STRING_DYN_ID_ARGS (void* context)
@@ -315,10 +286,20 @@ struct ui_image {
 
 typedef button_theme contextmenu_button_theme;
 
+enum class ui_cursor_type { os=0, image };
+
+struct ui_cursor {
+    ui_cursor_type type;
+    union {
+        OS::cursor_style os_cursor;
+    };
+};
+
 struct ui_element {
     ui_type type;
     rc2 placement;
     interaction_state interaction_st;
+    ui_cursor cursor;
     union {
         struct {
             sizer_props properties;
@@ -339,19 +320,17 @@ struct ui_element {
         struct {
             background_theme theme;
 
-            void* context;
-            background_action_on_click* OnClick;
-            background_action_on_doubleclick* OnDoubleClick;
-            action_on_unrclick* OnUnRClick;
+            ui_action OnClick;
+            ui_action OnDoubleClick;
+            ui_action OnUnRClick;
         } background;
         struct {
             button_theme theme;
 
-            button_action_on_unclick* OnUnclick;
-            button_action_on_click* OnClick;
-            button_action_on_doubleclick* OnDoubleClick;
-            action_on_unrclick* OnUnRClick;
-            void* context;
+            ui_action OnUnclick;
+            ui_action OnClick;
+            ui_action OnDoubleClick;
+            ui_action OnUnRClick;
 
             ui_string text;
             ui_image image;
@@ -439,18 +418,22 @@ struct ui_element {
             ui_string placeholder_text;
             hotkey_string_state string_state;
             ui_hotkey current_hotkey;
-            globalhotkey_action_on_triggered* on_hotkey;
-            void* context;
+            ui_action on_hotkey;
+            //globalhotkey_action_on_triggered* on_hotkey;
+            //void* context;
         } hotkey;
     } data;
+
+    //TODO(fran): add general ui_actions for all elements
+
     ui_element* child;//TODO(fran): maybe change to childs, elements that will be placed inside the parent
 
-    ui_element* AddChild(ui_element* child) {
-        assert(this->child == nil);
-        assert(child->type == ui_type::sizer);
-        this->child = child;
-        return this;
-    }
+    //ui_element* AddChild(ui_element* child) {
+    //    assert(this->child == nil);
+    //    assert(child->type == ui_type::sizer);
+    //    this->child = child;
+    //    return this;
+    //}
 };
 
 struct d2d_renderer {
@@ -560,10 +543,8 @@ struct ui_tray_state {
     struct {
         NOTIFYICONDATAW notification; //TODO(fran): OS independent (generic) version
     }impl;
-    action_on_unclick* on_unclick;
-    void* on_unclick_context;
-    action_on_unrclick* on_unrclick;
-    void* on_unrclick_context;
+    ui_action on_unclick;
+    ui_action on_unrclick;
 };
 
 struct ui_state {
@@ -589,9 +570,8 @@ struct ui_state {
     ui_element* keyboard_focus;
 
     struct {
-        globalhotkey_action_on_triggered* action;
+        ui_action on_triggered;
         ui_element* element;
-        void* context;
         i64 registration_time; //TODO(fran): look for a better alternative, we should accept the hotkey once the buttons that were pressed to register it are unpressed
         b32 enabled; //TODO(fran): I could instead set registration_time to negative and use that as the enabled flag
     } global_registered_hotkeys[64];
@@ -603,6 +583,8 @@ struct ui_state {
     ui_state* context_menu; //TODO(fran): I dont see the need to store a pointer to another window, all state is handled outside of it, so I dont see reason to need it, change this to a dynamic array that handles & dispatches all windows (all ui_states)
     //NOTE(fran): each time we use a context menu we need to create a whole new state object, in order to save time we will not later destroy those objects but instead leave them for reuse
     //NOTE(fran): a benefit of context menus is they never get resized by the user, meaning we can actually create those windows directly from this thread
+
+    //b32 _last_mouse_was_inside;
 };
 
 struct veil_ui_state : ui_state {
@@ -824,11 +806,11 @@ struct button_creation_args {
     button_theme* theme;
     ui_string text;
     ui_image image;
-    void* context;
-    button_action_on_click* on_click;
-    button_action_on_unclick* on_unclick;
-    button_action_on_doubleclick* on_doubleclick;
-    action_on_unrclick* on_unrclick;
+    ui_cursor cursor;
+    ui_action on_click;
+    ui_action on_unclick;
+    ui_action on_doubleclick;
+    ui_action on_unrclick;
     ui_element* child;
 };
 internal ui_element* Button(const button_creation_args& args)
@@ -836,12 +818,12 @@ internal ui_element* Button(const button_creation_args& args)
     ui_element* elem = push_type(args.arena, ui_element);
     elem->type = ui_type::button;
     elem->placement = { 0 };
+    elem->cursor = args.cursor;
     elem->child = args.child;
     elem->data.button.theme = *args.theme; //TODO(fran): this could be changed to be a straight pointer, and allow for quick and easy realtime update of all elements sharing the same theme
 
     elem->data.button.text = args.text;
     elem->data.button.image = args.image;
-    elem->data.button.context = args.context;
     elem->data.button.OnClick = args.on_click;
     elem->data.button.OnUnclick = args.on_unclick;
     elem->data.button.OnDoubleClick = args.on_doubleclick;
@@ -884,10 +866,9 @@ internal ui_element* ContextMenuButton(const contextmenu_button_creation_args& a
 struct background_creation_args {
     memory_arena* arena;
     background_theme* theme;
-    void* context;
-    background_action_on_click* on_click;
-    background_action_on_doubleclick* on_doubleclick;
-    action_on_unrclick* on_unrclick;
+    ui_action on_click;
+    ui_action on_doubleclick;
+    ui_action on_unrclick;
     ui_element* child;
 };
 internal ui_element* Background(const background_creation_args& args)
@@ -897,7 +878,6 @@ internal ui_element* Background(const background_creation_args& args)
     elem->placement = { 0 };
     elem->child = args.child;
     elem->data.background.theme = *args.theme;
-    elem->data.background.context = args.context;
     elem->data.background.OnClick = args.on_click;
     elem->data.background.OnDoubleClick = args.on_doubleclick;
     elem->data.background.OnUnRClick = args.on_unrclick;
@@ -954,8 +934,9 @@ struct hotkey_creation_args {
     hotkey_theme* theme;
     OS::hotkey_data* hotkey_value;
     ui_string placeholder_text;
-    void* context; 
-    globalhotkey_action_on_triggered* on_hotkey;
+    //void* context; 
+    //globalhotkey_action_on_triggered* on_hotkey;
+    ui_action on_hotkey;
     ui_element* child;
 };
 internal ui_element* Hotkey(const hotkey_creation_args& args)
@@ -966,7 +947,7 @@ internal ui_element* Hotkey(const hotkey_creation_args& args)
     elem->child = args.child;
     elem->data.hotkey.theme = *args.theme;
     elem->data.hotkey.on_hotkey = args.on_hotkey;
-    elem->data.hotkey.context = args.context;
+    //elem->data.hotkey.context = args.context;
     elem->data.hotkey.placeholder_text = args.placeholder_text;
     elem->data.hotkey.string_state = hotkey_string_state::placeholder;
 
@@ -1056,24 +1037,24 @@ internal void PopInverseAxisAlignedClip(ID2D1DeviceContext* renderer2D)
     for (u32 i = 0; i < 4; i++) renderer2D->PopAxisAlignedClip();
 }
 
+auto OnOffVeil = UI_ACTION_LAMBDA{
+    b32* show_veil = (decltype(show_veil))context;
+    *show_veil = !(*show_veil);
+};
+
 namespace common_ui_actions
 {
-    auto OnOffVeil = UI_ACTION_LAMBDA{
-    b32 * show_veil = (decltype(show_veil))context;
-    *show_veil = !(*show_veil);
-    };
-
-    auto MinimizeRestoreVeilUI = UI_ACTION_LAMBDA{ //TODO(fran): use ui_state*
+    auto MinimizeRestoreUI = UI_ACTION_LAMBDA{
         //TODO(fran): add the minimize/restore to tray code to the future animation system, currently it stalls the thread (via Sleep) until it finishes minimizing/restoring
         //TODO(fran): check for active tray icon, otherwise do normal minimize
-        veil_ui_state* veil_ui = (decltype(veil_ui))context;
-        if (!OS::IsWindowVisible(veil_ui->wnd)) { //window is minimized
-            RestoreWndFromTray(veil_ui->wnd);
+        ui_state* ui = (decltype(ui))context;
+        if (!OS::IsWindowVisible(ui->wnd)) { //window is minimized
+            RestoreWndFromTray(ui->wnd);
             //TODO(fran): the veil could be occluded, we should check that the veil is on top too
         }
         else {
             //TODO(fran): the window could be occluded (in which case we want to SW_SHOW), there doesnt seem to be an easy way to know whether your window is actually visible to the user
-            MinimizeWndToTray(veil_ui->wnd);
+            MinimizeWndToTray(ui->wnd);
         }
     };
 }
@@ -1536,7 +1517,7 @@ internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_t
 
     if (!already_initialized)
     {
-        res->scaling = GetNewScaling(res);
+        res->scaling = GetNewScaling(res); //TODO(fran): this is actually wrong since we dont yet know the location of the window and therefore the dpi of its containing monitor, this only works for single monitor setups
         res->_last_scaling = res->scaling;
 
         res->renderer = AcquireD3D11UIRenderer(res->wnd.hwnd);
@@ -1563,6 +1544,8 @@ internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_t
     res->elements = nil;
 
     res->input.mouseP = res->input.screen_mouseP = { F32MIN, F32MIN };
+
+    //res->_last_mouse_was_inside = false;
 }
 
 internal void ReleaseUIState(ui_state* ui) {
@@ -1623,10 +1606,8 @@ internal void AcquireTrayIcon(ui_tray_state* res, OS::window_handle wnd, /*const
     *res =
     {
         .impl = {.notification = notification},
-        .on_unclick = common_ui_actions::OnOffVeil,
-        .on_unclick_context = &veil_ui->show_veil,
-        .on_unrclick = common_ui_actions::MinimizeRestoreVeilUI,
-        .on_unrclick_context = veil_ui,
+        .on_unclick = {.context = &veil_ui->show_veil, .action = OnOffVeil},
+        .on_unrclick = {.context = (ui_state*)veil_ui, .action = common_ui_actions::MinimizeRestoreUI},
     };
 
     //TODO(fran): (see if this is a real problem) when changing system dpi the tray icon gets stretched by Windows, which obviously being Windows means after some stretchings the icon is a complete blurry mess, can we update the icon on dpi change?
@@ -2148,7 +2129,7 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
         //TODO(fran): move ui structure code outside
         memory_arena* arena = &veil_ui->permanent_arena;
 
-        local_persistence utf8 strs[6][50];
+        local_persistence utf8 strs[6][50]; //TODO(fran): get rid of this, we can now simply send the string by id
         s8 restore = { .chars = strs[0], .cnt_allocd = ArrayCount(strs[0]) };
         s8 move = { .chars = strs[1], .cnt_allocd = ArrayCount(strs[1]) };
         s8 size = { .chars = strs[2], .cnt_allocd = ArrayCount(strs[2]) };
@@ -2167,6 +2148,8 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
 
         close += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 6 });
         
+        ui_cursor Hand = { .type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
+
 #if 1
         veil_ui->context_menu->elements = SubelementTable(arena, 3,
             //TODO(fran): disable Restore when not maximized & Move,Size,Maximize when maximized
@@ -2178,7 +2161,7 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
             },
             { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::str, .str = size}, .on_unclick = {.context = (ui_state*)veil_ui, .action = KeyboardSize})
             },
-            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image= minimize_img, .text = {.type = ui_string_type::str, .str = minimize}, .on_unclick = {.context = veil_ui, .action = common_ui_actions::MinimizeRestoreVeilUI})
+            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image= minimize_img, .text = {.type = ui_string_type::str, .str = minimize}, .on_unclick = {.context = (ui_state*)veil_ui, .action = common_ui_actions::MinimizeRestoreUI})
             },
             { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image= maximize_img, .text = {.type = ui_string_type::str, .str = maximize}, .on_unclick = {.context = veil_ui, .action = MaximizeOrRestore})
             },
@@ -2258,17 +2241,17 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
 
     veil_ui->elements = /*v*/ VSizer(arena, sizer_alignment::top,
         { .sizing = os_nonclient_top, .element = /*h*/ HSizer(arena, sizer_alignment::left,
-                {.sizing = full_bounds_sizing, .element = /*nc_bk*/ Background(.arena = arena, .theme = &nonclient_bk_theme, .context = veil_ui, .on_click = Move, .on_doubleclick = Caption_MaximizeOrRestore, .on_unrclick = ContextMenu,
+                {.sizing = full_bounds_sizing, .element = /*nc_bk*/ Background(.arena = arena, .theme = &nonclient_bk_theme, .on_click = {.context = veil_ui, .action = Move}, .on_doubleclick = {.context = veil_ui, .action = Caption_MaximizeOrRestore}, .on_unrclick = {.context = veil_ui, .action = ContextMenu},
                     .child = /*nc_v*/ VSizer(arena, sizer_alignment::top,
                         {.sizing = full_bounds_sizing, .element = /*nc_h*/ HSizer(arena, sizer_alignment::left,
                             {.sizing = half_bounds_sizing, .element = /*left_placement*/ HSizer(arena, sizer_alignment::left,
-                                {.sizing = icon_sizing, .element = /*logo*/Button(.arena = arena, .theme = &base_iconbutton_theme, .image = logo_img, .context = veil_ui, .on_doubleclick = LogoQuit /*TODO(fran): on click open right click menu*/)},
-                                {.sizing = noneditabletext_sizing, .element = /*title*/ Button(.arena = arena, .theme = &base_noneditabletext_theme,.text = {.type = ui_string_type::str, .str = const_temp_s(appname)}, .context = veil_ui, .on_click = Move, .on_doubleclick = Caption_MaximizeOrRestore)}
+                                {.sizing = icon_sizing, .element = /*logo*/Button(.arena = arena, .theme = &base_iconbutton_theme, .image = logo_img, .on_click = {.context = veil_ui, .action=ContextMenu}, .on_doubleclick = {.context = veil_ui, .action = LogoQuit})},
+                                {.sizing = noneditabletext_sizing, .element = /*title*/ Button(.arena = arena, .theme = &base_noneditabletext_theme,.text = {.type = ui_string_type::str, .str = const_temp_s(appname)}, .on_click = {.context = veil_ui, .action = Move}, .on_doubleclick = {.context = veil_ui, .action = Caption_MaximizeOrRestore})}
                             )},
                             {.sizing = half_bounds_sizing, .element = /*right_placement*/ HSizer(arena, sizer_alignment::right,
-                                {.sizing = minmaxclose_sizing, .element = /*minimize*/ Button(.arena = arena, .theme = &minmax_theme, .image = minimize_img, .context = veil_ui, .on_unclick = common_ui_actions::MinimizeRestoreVeilUI)},
-                                {.sizing = minmaxclose_sizing, .element = /*maximize*/ Button(.arena = arena, .theme = &minmax_theme, .image = maximize_img, .context = veil_ui, .on_unclick = MaximizeOrRestore)},
-                                {.sizing = minmaxclose_sizing, .element = /*close*/ Button(.arena = arena, .theme = &close_theme, .image = close_img, .context = &veil_ui->quit, .on_unclick = Quit)}
+                                {.sizing = minmaxclose_sizing, .element = /*minimize*/ Button(.arena = arena, .theme = &minmax_theme, .image = minimize_img, .on_unclick = {.context = (ui_state*)veil_ui, .action = common_ui_actions::MinimizeRestoreUI})},
+                                {.sizing = minmaxclose_sizing, .element = /*maximize*/ Button(.arena = arena, .theme = &minmax_theme, .image = maximize_img, .on_unclick = {.context = veil_ui, .action = MaximizeOrRestore})},
+                                {.sizing = minmaxclose_sizing, .element = /*close*/ Button(.arena = arena, .theme = &close_theme, .image = close_img, .on_unclick = {.context = &veil_ui->quit, .action = Quit})}
                             )}
                         )}
                     )
@@ -2290,17 +2273,17 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         {
             .foreground =
             {
-                .normal = {1.f,.0f,.0f,1.0f},
-                .disabled = {.2f,.0f,.0f,1.0f},
-                .mouseover = {.8f,.0f,.0f,1.0f},
-                .pressed = {.5f,.0f,.0f,1.0f},
+                .normal = {1.f,1.0f,1.0f,1.0f},
+                .disabled = {0.2f,0.2f,0.2f,1.0f},
+                .mouseover = {0.9f,0.9f,0.9f,1.0f},
+                .pressed = {0.8f,0.8f,0.8f,1.0f},
             },
             .background =
             {
-                .normal = {.0f,1.0f,.0f,1.0f},
+                .normal = {0.0f,0.6f,0.8f,1.0f},
                 .disabled = {.0f,.2f,.0f,1.0f},
-                .mouseover = {.0f,.8f,.0f,1.0f},
-                .pressed = {.0f,.5f,.0f,1.0f},
+                .mouseover = V4(base_button_theme.color.background.normal.xyz * .95f,1.0f),
+                .pressed = V4(base_button_theme.color.background.mouseover.xyz * .95f,1.0f),
             },
             .border = base_button_theme.color.background,
         },
@@ -2318,24 +2301,23 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         {
             .track_fill =
             {
-                .normal = {.0f,0.5f,0.f,1.f},
-                .disabled = {1.f,0.f,0.f,1.f},
-                .mouseover = {.0f,.7f,0.f,1.f},
-                .pressed = {.0f,.9f,0.f,1.f},
+                .normal = {0.8f,0.8f,0.8f,1.f},
+                //.mouseover = {0.85f,0.85f,0.85f,1.f},
+                .mouseover = base_slider_theme.color.track_fill.normal,
+                .pressed = base_slider_theme.color.track_fill.mouseover,
             },
             .track_empty =
             {
-                .normal = {1.f,0.f,0.f,1.f},
-                .disabled = {1.f,0.f,0.f,1.f},
-                .mouseover = {1.f,0.f,0.f,1.f},
-                .pressed = {1.f,0.f,0.f,1.f},
+                .normal = {0.3f,0.3f,0.3f,1.f},
+                //.mouseover = {0.35f,0.35f,0.35f,1.f},
+                .mouseover = base_slider_theme.color.track_empty.normal,
+                .pressed = base_slider_theme.color.track_empty.mouseover,
             },
             .thumb =
             {
-                .normal = {.0f,0.f,0.5f,1.f},
-                .disabled = {.0f,.0f,0.1f,1.f},
-                .mouseover = {.0f,0.f,0.7f,1.f},
-                .pressed = {1.f,0.f,0.9f,1.f},
+                .normal = {0.6f,0.6f,0.6f,1.f},
+                .mouseover = {0.65f,0.65f,0.65f,1.f},
+                .pressed = base_slider_theme.color.thumb.mouseover,
             },
         },
         .dimension =
@@ -2441,7 +2423,12 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         .type = element_sizing_type::bounds,
         .bounds = {.scale_factor = 1.f},
     };
-
+    element_sizing_desc threequarters_bounds_sz =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = .9f},
+    };
+    
     memory_arena* arena = &veil_ui->permanent_arena;
 
 
@@ -2469,7 +2456,7 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
     element_sizing_desc TEST_button_w_sizing =
     {
         .type = element_sizing_type::bounds,
-        .bounds = {.scale_factor = .45f},
+        .bounds = {.scale_factor = .35f},
     };
     element_sizing_desc TEST_filler_pad =
     {
@@ -2510,6 +2497,8 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         },
     };
 
+    ui_cursor Hand = { .type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
+
     ui_element* layout = VSizer(arena, sizer_alignment::top,
         { .sizing = full_bounds_sizing, .element = HSizer(arena, sizer_alignment::left,
             {.sizing = full_bounds_sizing, .element = Background(.arena = arena, .theme = &bk_theme,
@@ -2520,11 +2509,11 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
                                 {.sizing = TEST_full_slider, .element = Slider(.arena = arena, .theme = &base_slider_theme, .value = {&veil_ui->threshold,veil_ui->threshold_min,veil_ui->threshold_max})}
                             )},
                             {.sizing = vertical_trio_sizing, .element = /*mid_third*/ HSizer(arena, sizer_alignment::right,
-                                {.sizing = TEST_button_w_sizing, .element = Button(.arena = arena, .theme = &base_button_theme, .text = on_off_text, .context = &veil_ui->show_veil, .on_unclick = common_ui_actions::OnOffVeil)},
+                                {.sizing = TEST_button_w_sizing, .element = VSizer(arena, sizer_alignment::top, {.sizing = threequarters_bounds_sz, .element = Button(.arena = arena, .theme = &base_button_theme, .text = on_off_text, .cursor = Hand, .on_unclick = {.context = &veil_ui->show_veil, .action = OnOffVeil})})},
                                 {.sizing = TEST_filler_pad, .element = HPad(arena)}
                             )},
                             {.sizing = vertical_trio_sizing, .element = /*bot_third*/ HSizer(arena, sizer_alignment::center,
-                                {.sizing = hotkey_sizing, .element = Hotkey(.arena = arena, .theme = &base_hotkey_theme, .hotkey_value = &veil_ui->show_ui_hotkey,.placeholder_text = {.type = ui_string_type::id, .str_id = 52u }, .context = veil_ui, .on_hotkey = common_ui_actions::MinimizeRestoreVeilUI)}
+                                {.sizing = hotkey_sizing, .element = VSizer(arena, sizer_alignment::center, {.sizing = threequarters_bounds_sz, .element = Hotkey(.arena = arena, .theme = &base_hotkey_theme, .hotkey_value = &veil_ui->show_ui_hotkey,.placeholder_text = {.type = ui_string_type::id, .str_id = 52u }, .on_hotkey = {.context = (ui_state*)veil_ui, .action = common_ui_actions::MinimizeRestoreUI})})}
                             )}
                         )}
                     )}
@@ -2731,18 +2720,18 @@ internal void BeginInteraction(ui_state* ui, ui_element* next_hot, user_input* i
 
             //TODO(fran): quick HACK: made it official whether we are currently working with left or right click
             if (IsDoubleclicked(input->keys[input_key::left_mouse]))
-                safe_call(data.OnDoubleClick, element, data.context);
+                safe_call(data.OnDoubleClick.action, element, data.OnDoubleClick.context);
             else 
-                safe_call(data.OnClick, element, data.context);
+                safe_call(data.OnClick.action, element, data.OnClick.context);
         } break;
         case ui_type::background:
         {
             auto& data = element->data.background;
             //TODO(fran): same quick HACK
             if (IsDoubleclicked(input->keys[input_key::left_mouse]))
-                safe_call(data.OnDoubleClick, element, data.context);
+                safe_call(data.OnDoubleClick.action, element, data.OnDoubleClick.context);
             else
-                safe_call(data.OnClick, element, data.context);
+                safe_call(data.OnClick.action, element, data.OnClick.context);
         } break;
     }
 }
@@ -2763,7 +2752,7 @@ internal void EndInteraction(ui_state* ui, user_input* input)
         {
             auto& data = element->data.button;
             if (last_interaction_st == interaction_state::pressed)
-                safe_call(data.OnUnclick, element, data.context);
+                safe_call(data.OnUnclick.action, element, data.OnUnclick.context);
         } break;
         case ui_type::contextmenu_button:
         {
@@ -2812,6 +2801,24 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, user_input
 
         if (last_interaction_st != element->interaction_st) EnableRendering(ui);
     }
+
+    if (ui->under_the_mouse != next_hot)//TODO(fran): add extra check, while on interaction we mustnt change the cursor, it must remain with the look that the element being interacted wants
+    {
+        OS::cursor_style cursor;
+        if (next_hot) 
+        { 
+            assert(next_hot->cursor.type == ui_cursor_type::os); //TODO(fran): custom cursors
+            cursor = next_hot->cursor.os_cursor;
+        }
+        else cursor = OS::cursor_style::arrow;
+#if 0 //TODO(fran): setcursor doesnt work from here for some reason, but it does work from the main thread by using sendmessage which is what _SetCursor does
+        OS::SetCursor(cursor);
+#else
+        OS::_SetCursor(ui->wnd, cursor);
+#endif
+        //TODO(fran): later on we'd want more control over the cursor, probably to be handled on the on_mouseover action of each element
+    }
+
     ui->under_the_mouse = next_hot; //TODO(fran): we should set this guy to interaction_state::mouseover if it's valid
 
     if (ui_element* element = ui->under_the_mouse)
@@ -2837,7 +2844,7 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, user_input
                 auto data = element->data.background;
 
                 if (IsUnclicked(input->keys[input_key::right_mouse]))
-                    safe_call(data.OnUnRClick, ui->under_the_mouse, data.context);
+                    safe_call(data.OnUnRClick.action, ui->under_the_mouse, data.OnUnRClick.context);
 
             } break;
         }
@@ -2848,14 +2855,14 @@ internal void UpdateGlobalHotkeys(ui_state* ui, user_input* input)
 {
     if (input->global_hotkey_id != 0)
     {
-        auto& [func, element, context, registration_time, enabled] = ui->global_registered_hotkeys[input->global_hotkey_id];
+        auto& [on_triggered, element, registration_time, enabled] = ui->global_registered_hotkeys[input->global_hotkey_id];
         
         //NOTE(fran): the user takes time to enter a hotkey and then release those same keys, in that time we get hotkey triggered messages from the OS! This can not be solved using wm_keyup. The problem actually also occurs on my previous win32 projects, but it seems like the delay there is much bigger (Windows inefficiencies possibly to blame) so I never noticed until now
         if (enabled || (enabled=EndCounter(registration_time) > 250/*milliseconds*/))
         {
             EnableRendering(ui);
 
-            func(element, context);
+            on_triggered.action(element, on_triggered.context);
         }
     }
 }
@@ -2867,13 +2874,13 @@ void UnregisterGlobalHotkey(ui_state* ui, ui_hotkey hotkey)
         ui->global_registered_hotkeys[hotkey.id] = {0};
 }
 
-b32 RegisterGlobalHotkey(ui_state* ui, ui_hotkey hotkey, globalhotkey_action_on_triggered* action, ui_element* element, void* context)
+b32 RegisterGlobalHotkey(ui_state* ui, ui_hotkey hotkey, ui_action on_hotkey_triggered, ui_element* element)
 {
     UnregisterGlobalHotkey(ui, hotkey);
     b32 res = RegisterHotKey(nil, hotkey.id, hotkey.hk->mods | MOD_NOREPEAT, hotkey.hk->vk); //TODO(fran): OS code
     //NOTE(fran): if we dont associate the hotkey with any hwnd then it just sends the msg to the current thread, also documentation says it can not associate the hotkey with a wnd created from another thread
     if (res)
-        ui->global_registered_hotkeys[hotkey.id] = {.action=action, .element=element, .context=context, .registration_time=StartCounter()};
+        ui->global_registered_hotkeys[hotkey.id] = {.on_triggered= on_hotkey_triggered, .element=element, .registration_time=StartCounter()};
     return res;
 }
 
@@ -2893,7 +2900,7 @@ internal void UpdateKeyboardFocus(ui_state* ui, user_input* input)
                         EnableRendering(ui);
                         //TODO(fran): flag for defining global & non global hotkeys (also later we'll probably want to have application global hotkeys in the sense they get triggered even if no keyboard focus is on the element, but that is application code, not OS)
                         *data.current_hotkey.hk = input->hotkey;
-                        b32 registered = RegisterGlobalHotkey(ui, data.current_hotkey, data.on_hotkey, element, data.context);
+                        b32 registered = RegisterGlobalHotkey(ui, data.current_hotkey, data.on_hotkey, element);
                         
                         if (registered)
                             data.string_state = hotkey_string_state::validhk;
@@ -2911,12 +2918,12 @@ internal void UpdateTray(ui_state* ui, user_input* input)
     if (input->tray.on_unclick)
     {
         EnableRendering(ui);
-        safe_call(ui->tray.on_unclick, nil, ui->tray.on_unclick_context);
+        safe_call(ui->tray.on_unclick.action, nil, ui->tray.on_unclick.context);
     }
     if (input->tray.on_unrclick)
     {
         EnableRendering(ui);
-        safe_call(ui->tray.on_unrclick, nil, ui->tray.on_unrclick_context);
+        safe_call(ui->tray.on_unrclick.action, nil, ui->tray.on_unrclick.context);
     }
 }
 
@@ -3049,6 +3056,16 @@ internal GetColorsForInteractionState_res GetColorsForInteractionState(struct bu
     res.fg = colors->foreground.E[(i32)interaction_st];
     res.bk = colors->background.E[(i32)interaction_st];
     res.bd = colors->border.E[(i32)interaction_st];
+    return res;
+}
+
+struct SliderGetColorsForInteractionState_res { v4 track_empty, track_fill, thumb; };
+internal SliderGetColorsForInteractionState_res GetColorsForInteractionState(struct slider_theme::color* colors, interaction_state interaction_st)
+{
+    SliderGetColorsForInteractionState_res res;
+    res.track_empty = colors->track_empty.E[(i32)interaction_st];
+    res.track_fill = colors->track_fill.E[(i32)interaction_st];
+    res.thumb = colors->thumb.E[(i32)interaction_st];
     return res;
 }
 
@@ -3224,9 +3241,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             ID2D1SolidColorBrush* TrackFillBrush{ 0 }; defer{ d3d_SafeRelease(TrackFillBrush); };
             ID2D1SolidColorBrush* ThumbBrush{ 0 }; defer{ d3d_SafeRelease(ThumbBrush); };
 
-            v4 track_empty_color = data.theme.color.track_empty.normal;
-            v4 track_fill_color = data.theme.color.track_fill.normal;
-            v4 thumb_color = data.theme.color.thumb.normal;
+            auto [track_empty_color, track_fill_color, thumb_color] = GetColorsForInteractionState(&data.theme.color, element->interaction_st);
+            //TODO(fran): better coloring based not only on interaction state but collision testing too, check whether the mouse is in the empty/fill/thumb region and only change the color for that one, leave the others on normal
 
             auto brush_props = D2D1::BrushProperties(track_empty_color.a);
             renderer->CreateSolidColorBrush((D2D1_COLOR_F*)&track_empty_color, &brush_props, &TrackEmptyBrush);
@@ -4075,22 +4091,25 @@ internal void PrintNextHot(input_results* input_res)
 internal void CheckMouseExitsBounds(ui_state* ui)
 {
     //TODO(fran): quick HACK
-    local_persistence b32 last_mouse_was_inside = false;
     POINT p;
     GetCursorPos(&p);
-    MapWindowPoints(HWND_DESKTOP, ui->wnd, &p, 1);
+    MapWindowPoints(HWND_DESKTOP, ui->wnd.hwnd, &p, 1);
 
-    b32 mouse_is_inside = test_pt_rc({ (f32)p.x, (f32)p.y }, ui->placement);
+    f32 offsetY = !ui->is_context_menu && !IsWindowMaximized(ui->wnd) ? OS::GetWindowTopMargin(ui->wnd) : 0;
 
-    if (!mouse_is_inside && last_mouse_was_inside)
+    rc2 placement = { .x = ui->placement.x, .y = ui->placement.y + offsetY, .w = ui->placement.w, .h = ui->placement.h - offsetY };
+
+    b32 mouse_is_inside = test_pt_rc({ (f32)p.x, (f32)p.y }, placement);
+
+    if (!mouse_is_inside && ui->_last_mouse_was_inside)
     {
         EnableRendering(ui);
         //TODO(fran): another HACK: we currently only get the mouse position when a mouse event happens on top of us, which means the mouse isnt updated and is left in the last place it was inside, we need to update the mouse so elements it was on top of before exiting can update their interaction state
-        ui->input->mouseP = { (f32)p.x, (f32)p.y };
+        ui->input.mouseP = { (f32)p.x, (f32)p.y };
     }
     //TODO(fran): decide what to do with the top "nonclient" strip, we should actually do some collision testing and inform the nonclient where our buttons are, so it does not allow resizing from there
 
-    last_mouse_was_inside = mouse_is_inside;
+    ui->_last_mouse_was_inside = mouse_is_inside;
 }
 */
 
@@ -4230,4 +4249,12 @@ internal void UIProcessing(ui_state* ui)
     //TODO(fran): when the window is minimized animations should be paused
 
     //TODO(fran): BUG: main window maximized, press right click over its title bar and when the context menu opens the main window loses its maximized flag and gets rendered with the incorrect Y offset
+
+    //TODO(fran): change mouse icon based on interaction state, allow user to define the mouse icon to use in each case for each element
+
+    //TODO(fran): change titlebar to inactive state when we stop being the foreground window
+
+    //TODO(fran): additional root components, to add for example debug information like timings
+
+    //TODO(fran): interaction passthrough, so for example we can define all elements on the title bar to be rclick_passthrough and so the right click gets sent to the background, which triggers the contextmenu
 }

@@ -112,6 +112,7 @@ v4& v4::operator*=(f32 rhs_scalar) { *this = *this * rhs_scalar; return *this; }
 
 v4 operator/(v4 v, f32 scalar) { v4 res; res.x = v.x / scalar; res.y = v.y / scalar; res.z = v.z / scalar; res.w = v.w / scalar; return res; }
 
+v4 V4(v3 v, f32 alpha) { v4 res = { .x = v.x, .y = v.y, .z = v.z, .w = alpha }; return res; }
 
 struct rc2 { //IMPORTANT: this rectangles are meant for use in UI code, and as such have top-left for position, since they should be used in coordinate systems with X going right and Y going _down_ //TODO(fran): correct this if we end up using other coordinate system
 	union {

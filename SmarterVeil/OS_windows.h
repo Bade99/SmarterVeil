@@ -11,6 +11,8 @@
 
 #define WM_TRAY (WM_USER + 101)
 
+#define WM_CUSTOMSETCURSOR (WM_USER + 201) /*wParam=HCURSOR*/
+
 //NOTE(fran): Windows API calls that need chaging for Dpi aware versions:
 	// Reference: https://docs.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows
 	// Single DPI version	Per - Monitor version
@@ -338,6 +340,7 @@ namespace _OS
 			RECT suggested_window = *(RECT*)lParam;
 			MovWindow(hWnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
 		} break;
+		case WM_CUSTOMSETCURSOR: { SetCursor((HCURSOR)wParam); } break;
 		default:
 		{
 			return DefWindowProcW(hWnd, message, wParam, lParam);
@@ -539,7 +542,7 @@ namespace OS
 		local_persistence HICON logo_small = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, SmallIconX, SmallIconX, 0);
 		wc.hIcon = logo_large;
 		wc.hIconSm = logo_small;
-		wc.hCursor = LoadCursorW(nil, IDC_ARROW); //NOTE(fran): do _not_ use the hinstance parameter
+		wc.hCursor = nil;// LoadCursorW(nil, IDC_ARROW); //NOTE(fran): do _not_ use the hinstance parameter
 		wc.lpszClassName = appnameL L"_ui_class";
 
 		if (RegisterClassExW(&wc) || (GetLastError() == ERROR_CLASS_ALREADY_EXISTS))
@@ -742,5 +745,34 @@ namespace OS
 				}
 			}
 		}
+	}
+
+	//TODO(fran): custom cursors, we'd want to use a CreateCursor(ui_image) function for example and SetCursor(OS::cursor_handle) or something like that
+	internal void SetCursor(cursor_style cursor)
+	{
+		HCURSOR c;
+		switch (cursor)
+		{
+			case cursor_style::text: { c = LoadCursorW(nil, IDC_IBEAM); } break;
+			case cursor_style::hand: { c = LoadCursorW(nil, IDC_HAND); } break;
+			default: { c = LoadCursorW(nil, IDC_ARROW);} break;
+		}
+		//NOTE(fran): the loaded cursor is handled by the OS, we dont need to free it
+		::SetCursor(c);
+	}
+
+	//TODO(fran): HACK: it seems to me that only the main thread can set the cursor
+	internal void _SetCursor(OS::window_handle wnd, cursor_style cursor)
+	{
+		HCURSOR c;
+		switch (cursor)
+		{
+		case cursor_style::text: { c = LoadCursorW(nil, IDC_IBEAM); } break;
+		case cursor_style::hand: { c = LoadCursorW(nil, IDC_HAND); } break;
+		default: { c = LoadCursorW(nil, IDC_ARROW); } break;
+		}
+		//NOTE(fran): the loaded cursor is handled by the OS, we dont need to free it
+		
+		SendMessageW(wnd.hwnd, WM_CUSTOMSETCURSOR, (WPARAM)c, 0);
 	}
 }
