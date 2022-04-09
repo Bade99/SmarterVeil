@@ -7,11 +7,13 @@
 
 #define WM_GETTOPMARGIN (WM_USER+1)
 
-#define WM_DPICHANGED_CUSTOM (WM_USER+51) /*lparam=is set to zero*/ /*NOTE(fran): PostMessage does _not_ allow to send WM_DPICHANGED because the lparam is a pointer that will only be valid while we remain on the wndproc scope*/
+#define WM_DPICHANGED_CUSTOM (WM_USER+2) /*lparam=is set to zero*/ /*NOTE(fran): PostMessage does _not_ allow to send WM_DPICHANGED because the lparam is a pointer that will only be valid while we remain on the wndproc scope*/
 
-#define WM_TRAY (WM_USER + 101)
+#define WM_TRAY (WM_USER + 3)
 
-#define WM_CUSTOMSETCURSOR (WM_USER + 201) /*wParam=HCURSOR*/
+#define WM_CUSTOMSETCURSOR (WM_USER + 4) /*wParam=HCURSOR*/
+
+//NOTE(fran): custom window messages can go from WM_USER(0x0400) up to 0x0FFF, the top 4 bits are needed for other stuff
 
 //NOTE(fran): Windows API calls that need chaging for Dpi aware versions:
 	// Reference: https://docs.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows
@@ -202,14 +204,33 @@ namespace _OS
 
 	LRESULT CALLBACK UIProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
-#define MovWindow(wnd, rc) MoveWindow(wnd, rc.left, rc.top, RECTW(rc), RECTH(rc), false)
+		auto MovWindow = [](HWND wnd, RECT rc) { MoveWindow(wnd, rc.left, rc.top, RECTW(rc), RECTH(rc), false); };
 		//auto _msgName = msgToString(message); OutputDebugStringA(_msgName); OutputDebugStringA("\n");
 
 		//TODO(fran): do not allow the window to get smaller than a certain threshold, currently the user can make the window be almost 0 width & 0 height
 
 		//TODO(fran): add functionality that Windows doesnt provide: double click on _any_ of the resizing borders causes a window resize in that direction up to the corresponding screen bound, eg. double click that generates HTLEFT moves the window rect's left component to the left of the monitor it's in
 
-		local_persistence i32 top_margin = 6; //TODO(fran): unique top_margin for each hwnd
+		//TODO(fran): always do OS::SendWindowToTop() when a topmost window gets SW_SHOW?
+
+		//TODO(fran): try to do single threaded window handling by using settimer on wm_entersizemove/... and call iu::update_and_render()
+			//NOTE: the problem is that even if this does work the thread will still get stalled, and no other user code will run apart from the ui's
+
+		struct ProcState {
+			i32 top_margin;
+		};
+
+		auto get_state = [](HWND hwnd) -> ProcState* {
+			ProcState* state = (ProcState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+			return state;
+		};
+		auto set_state = [](HWND hwnd, ProcState* state) {
+			SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)state);
+		};
+
+		ProcState* state = get_state(hWnd);
+
+		//if ((GetWindowLongPtrW(hWnd, GWL_STYLE) & WS_POPUP) == 0/*non os_managed*/) goto default_handling; //NOTE(fran): apply this on a per-message basis
 #if 0
 		local_persistence u32 last_hittest;
 		local_persistence POINT mouse_pivot; //in screen coordinates
@@ -269,6 +290,23 @@ namespace _OS
 				ReleaseCapture();
 		} break;
 #endif
+		case WM_NCCREATE:
+		{
+			ProcState* st = (ProcState*)calloc(1, sizeof(ProcState));
+			assert(st);
+			set_state(hWnd, st);
+
+			st->top_margin = 6;
+
+			goto default_handling;
+		} break;
+		case WM_NCDESTROY:
+		{
+			free(state);
+			set_state(hWnd, nil);
+
+			goto default_handling;
+		} break;
 		case WM_NCLBUTTONDOWN:
 		{
 			ReleaseCapture(); //NOTE(fran): it seems like the Move operation (entersizemove) can _not_ start if the mouse is currently being captured by SetCapture()
@@ -283,12 +321,12 @@ namespace _OS
 				RECT emptyrc{ 0 };
 				AdjustWindowRectEx(&emptyrc, GetWindowLongPtrW(hWnd, GWL_STYLE), false, 0);
 				//TODO(fran): AdjustWindowRectExForDpi (or simply get the dpi and scale manually)
-				top_margin = RECTH(emptyrc) / 2;
+				state->top_margin = RECTH(emptyrc) / 2;
 
 				RECT winrc; GetWindowRect(hWnd, &winrc);
 				RECT clirc; GetClientRect(hWnd, &clirc);
 
-				calcsz->rgrc[0].top -= top_margin;
+				calcsz->rgrc[0].top -= state->top_margin;
 				return res;
 			}
 			else return DefWindowProcW(hWnd, message, wParam, lParam);
@@ -305,7 +343,7 @@ namespace _OS
 				POINT mouse{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; ScreenToClient(hWnd, &mouse);
 
 				RECT rc; GetClientRect(hWnd, &rc);
-				RECT top_border = { 0, 0, RECTW(rc), top_margin };
+				RECT top_border = { 0, 0, RECTW(rc), state->top_margin };
 				RECT topleft_border = top_border; topleft_border.right = top_side_margin;
 				RECT topright_border = top_border; topright_border.left = RECTW(rc) - top_side_margin;
 
@@ -324,7 +362,7 @@ namespace _OS
 		} break;
 		case WM_GETTOPMARGIN:
 		{
-			return top_margin;
+			return state->top_margin;
 		} break;
 		case WM_TRAY:
 		{
@@ -343,11 +381,11 @@ namespace _OS
 		case WM_CUSTOMSETCURSOR: { SetCursor((HCURSOR)wParam); } break;
 		default:
 		{
+			default_handling:
 			return DefWindowProcW(hWnd, message, wParam, lParam);
 		} break;
 		}
 		return 0;
-#undef MovWindow
 	}
 }
 
@@ -360,7 +398,7 @@ namespace OS
 	struct hotkey_data {
 		u8 vk;    //Virtual Key
 		u16 mods; //Hotkey modifiers: ctrl, alt, shift
-		LPARAM translation_nfo; //Extra information needed by Windows when converting hotkey to text
+		LPARAM translation_nfo; //Extra information needed by Windows when converting hotkey to text, specifically scancode + extended key flag
 
 		b32 has_hotkey()
 		{
@@ -523,6 +561,12 @@ namespace OS
 
 	struct window_handle {
 		HWND hwnd;
+
+		b32 operator!() { return !this->hwnd; } //TODO(fran): replace with is_valid?
+		b32 operator==(window_handle cmp_wnd) { return this->hwnd == cmp_wnd.hwnd; }
+
+		//b32 operator!() volatile { return !this->hwnd; } //TODO(fran): this is for testing window creation from a different thread, we may want to get rid of this in the future
+
 	};
 
 	internal window_handle Window(window_creation_flags flags)
@@ -547,14 +591,22 @@ namespace OS
 
 		if (RegisterClassExW(&wc) || (GetLastError() == ERROR_CLASS_ALREADY_EXISTS))
 		{
+#if 1
 			u32 extended_flags = WS_EX_NOREDIRECTIONBITMAP;
+#else //os_managed
+			u32 extended_flags = 0;
+#endif
 #ifndef DEBUG_BUILD
 			extended_flags |= (flags & topmost) ? WS_EX_TOPMOST : 0;
 #endif
 			extended_flags |= (flags & notaskbar) ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW;
 			extended_flags |= (flags & clickthrough) ? WS_EX_LAYERED | WS_EX_TRANSPARENT : 0;
 
+#if 1
 			u32 basic_flags = WS_POPUP;
+#else //os_managed
+			u32 basic_flags = WS_OVERLAPPEDWINDOW;
+#endif
 			basic_flags |= (flags & resizeborder) ? WS_THICKFRAME | WS_MAXIMIZEBOX : 0; //TODO(fran): separate WS_MAXIMIZEBOX as a different flag?
 
 			//SUPER IMPORTANT NOTE(fran): WS_MAXIMIZEBOX is _required_ for the aero window auto-resizing when touching screen borders

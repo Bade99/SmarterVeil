@@ -29,6 +29,8 @@ v2& v2::operator+=(const v2& rhs) { *this = *this + rhs; return *this; }
 
 v2& v2::operator*=(f32 rhs_scalar) { *this = *this * rhs_scalar; return *this; }
 
+b32 operator==(v2 a, v2 b) { b32 res = a.x==b.x && a.y==b.y; return res; }
+
 v2 v2_from(i32 x, i32 y) { v2 res; res.x = (f32)x; res.y = (f32)y; return res; }
 
 typedef v2 sz2; //2D size (width & height) //TODO(fran): maybe 'd2' (dimension 2) is better?

@@ -40,8 +40,7 @@ internal HRESULT As(Origin * o, Dest * d)
 
 struct veil_start_data {
     OS::window_handle veil_wnd;
-    OS::window_handle veil_ui_wnd;
-    u64 main_thread_id;
+    ui_state* veil_ui_base_state;
 };
 
 struct d3d11_renderer {
@@ -87,20 +86,20 @@ struct windows_compositor {
 
 struct veil_state {
     OS::window_handle wnd;
-
-    //TODO(fran): acquire & release
-    //language_manager LanguageManager;
-    //
-
-    veil_ui_state ui;
     
     d3d11_renderer renderer;
     d3d11_desktop_duplication desktop_duplication;
     windows_compositor compositor;
 
     u32 locking_wait_ms;
-};
 
+    //TODO(fran): acquire & release
+    //language_manager LanguageManager;
+    //
+    veil_ui_state ui;
+
+};
+#if 0
 internal void GetInput(ui_state* ui, MSG msg)
 {
     user_input& ui_input = ui->input;
@@ -212,7 +211,9 @@ internal void GetInput(ui_state* ui, MSG msg)
     }
     //}
 }
+#endif
 
+#if 0
 internal void PreAdjustInput(user_input* ui_input)
 {
     ui_input->hotkey = { 0 };
@@ -231,7 +232,35 @@ internal void PreAdjustInput(user_input* ui_input)
     ui_input->tray.on_unclick = false;
     ui_input->tray.on_unrclick = false;
 }
+#endif
 
+internal void AdjustMouse(ui_state* ui)
+{
+    //TODO(fran): OS code, also this is kind of a HACK
+        //had an idea: we could SetCapture() on mouseover too, apart from doing it on click, problem would be that I doubt other apps do that and we'd end up capturing the mouse when other apps wont expect it
+    POINT p;
+    if (GetCursorPos(&p))
+    {
+        if(ui->wnd.hwnd != WindowFromPoint(p)) //TODO(fran): we can remove the 'else' case if we can get this to return true only if the point is inside the _client_ area of the window
+        {
+#ifdef DEBUG_BUILD
+            ui->input.mouseP = ui->input.screen_mouseP = { -1, -1 }; //NOTE(fran): for ease of debugging
+#else
+            ui->input.mouseP = ui->input.screen_mouseP = { F32MIN, F32MIN };
+#endif
+        }
+        else
+        {
+            //update the window's cursor pos
+            POINT screenP = p;
+            MapWindowPoints(HWND_DESKTOP, ui->wnd.hwnd, &p, 1);
+            ui->input.mouseP = v2_from(p.x, p.y);
+            ui->input.screen_mouseP = v2_from(screenP.x, screenP.y);
+        }
+    }
+}
+
+#if 0
 internal void ProcessMessages(veil_state* Veil)
 {
     TIMEDFUNCTION();
@@ -241,6 +270,8 @@ internal void ProcessMessages(veil_state* Veil)
 
     PreAdjustInput(&Veil->ui.input);
     if (Veil->ui.context_menu) PreAdjustInput(&Veil->ui.context_menu->input);
+
+    v2 lastmousep[] = { Veil->ui.input.mouseP, Veil->ui.context_menu ? Veil->ui.context_menu->input.mouseP : v2{-1.f,-1.f} };
 
     //TODO(fran): while resizing the window with the mouse we enter WM_NCLBUTTONDOWN and seem to be getting hooked from someone else who 'handles' the sizing effect by stretching our window, this is probably some Directx thing I need to set up correctly, we need to get rid of this, otherwise real resizing doesnt occur until the user releases the mouse
         //TODO(fran): messages are going straight to the wndproc, bypassing this
@@ -285,6 +316,12 @@ internal void ProcessMessages(veil_state* Veil)
         }
     }
 
+    //TODO(fran): first of all this is still a pretty big HACK, also one edge case is still not covered, mouse moving from the titlebar to the top resize border and then back to the title bar, the mouse style will not update to the arrow and instead remain as the up-down resize because we never left the titlebar and therefore we dont get a trigger to update the mouse style
+    if (lastmousep[0] == Veil->ui.input.mouseP && (Veil->ui.interacting_with == nil))
+        AdjustMouse(&Veil->ui);
+    if (Veil->ui.context_menu && lastmousep[1] == Veil->ui.context_menu->input.mouseP && (Veil->ui.context_menu->interacting_with == nil))
+        AdjustMouse(Veil->ui.context_menu);
+
     //TODO(fran): one frame initialization for global ui things
     //Temporary Arena initialization
     ui_state* ui = &Veil->ui;
@@ -293,6 +330,7 @@ internal void ProcessMessages(veil_state* Veil)
     UIProcessing(&Veil->ui);
     if(Veil->ui.context_menu) UIProcessing(Veil->ui.context_menu);
 }
+#endif
 
 internal d3d11_renderer AcquireD3D11Renderer(HWND wnd)
 {
@@ -604,6 +642,100 @@ internal void RendererDraw(veil_state* Veil, ID3D11Texture2D* new_desktop_textur
     }
 }
 
+#if 1
+internal void VeilProcessing(veil_start_data* start_data)
+{
+    veil_state* Veil = (decltype(Veil))alloca(sizeof(*Veil)); zero_struct(*Veil);
+    Veil->wnd = start_data->veil_wnd;
+    Veil->renderer = AcquireD3D11Renderer(start_data->veil_wnd.hwnd /*TODO(fran): OS agnostic*/); defer{ ReleaseD3D11Renderer(&Veil->renderer); };
+    Veil->desktop_duplication = AcquireD3D11DesktopDuplication(&Veil->renderer); defer{ ReleaseD3D11DesktopDuplication(&Veil->desktop_duplication); };
+    Veil->compositor = AcquireWindowsCompositor(Veil); defer{ ReleaseWindowsCompositor(&Veil->compositor); };
+    Veil->locking_wait_ms = (u32)(1000.f / (f32)OS::GetRefreshRateHz(Veil->wnd)); //TODO(fran): maybe v-sync is a better option?
+
+    AcquireVeilUIState(&Veil->ui, start_data->veil_ui_base_state); defer{ ReleaseVeilUIState(&Veil->ui); };
+    //TODO(fran): handle refresh rate changes, probably from D3D since the wndproc doesnt seem to get any special notification about it
+
+    f64 IgnoreUpdateTimer = 0;//ms
+    bool IgnoreUpdate = false;
+
+    //INFO(fran): 
+    //Conclusions on the gpu spikes when hiding the veil:
+    // + TODO(fran): For starters having multiple d3d devices presenting means that we are stalling execution until the next frame before we would want to, when the ui presents it stalls, then we continue to the veil, which presents too and stalls again. This ends up causing the veil to be off by a couple of frames which is very noticeable and terrible, in sharp contrast with when the veil is on its own, in which case it is unnoticeable (TODO(fran): now I cant replicate it, and both cases look similar :c). Should we have a different thread for each d3d presentation device?
+
+    u32 desired_scheduler_ms = 1;
+    TIMECAPS timecap;
+    if (timeGetDevCaps(&timecap, sizeof(timecap)) == MMSYSERR_NOERROR)
+        desired_scheduler_ms = maximum(desired_scheduler_ms, timecap.wPeriodMin);
+    //TODO(fran): if we really wanted to we can spinlock if our desired ms is not met
+    timeBeginPeriod(desired_scheduler_ms); defer{ timeEndPeriod(desired_scheduler_ms); };
+    //TODO(fran): from what I understand, older systems would require calls to timeBeginPeriod and timeEndPeriod each time we use Sleep/other timers, because originally it was a system global thing
+
+    while (!Veil->ui.quit)
+    {
+        TIMEDBLOCK(MainLoop);
+        TIMERSTART(complete_cycle_elapsed);
+
+        auto old_show_veil = Veil->ui.show_veil;
+
+        MSG msg;
+        while (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE)) //NOTE(fran): handling for the veil, which is just a standard hwnd not handled by Iu
+        {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+
+        iu::update_and_render();
+
+        //ProcessMessages(Veil);
+        //SUPER TODO(fran): I have no clue why when the veil is hidden "ProcessMessages(Veil)" spikes GPU usage like crazy, to 50% if it's just hidden, and 20% if it's hidden and we check "if (Veil->ui.show_veil)" before doing render & update to compositor
+
+        if (old_show_veil != Veil->ui.show_veil)
+        {
+            if (Veil->ui.show_veil) OS::ShowWindow(Veil->wnd);
+            else OS::HideWindow(Veil->wnd);
+            //Make sure the ui remains on top of the veil
+            if (Veil->ui.show_veil && OS::IsWindowVisible(Veil->ui._ui->wnd)/*not minimized*/)
+                OS::SendWindowToTop(Veil->ui._ui->wnd);
+        }
+        //TODO(fran): when re-showing the veil it's topmost state is updated and sent to the top, which causes the veil ui to be occluded
+
+        //TODO(fran): reassert that the window is still topmost, it often happens that any random new app that opens does so on top of our window. Also see what we can do about fullscreen windows that instantly minimize when another window is clicked, maybe our trying to go topmost will minimize it?
+
+        //TODO(fran): while desktop duplication is active the computer cannot go to sleep, find a way to detect sleep requests and disable duplication
+
+        //TODO(fran): handle rotated desktops
+
+        //TODO(fran): once I turn off my screen the veil will keep failing to get the next desktop img when the screen turns back on
+
+        if (Veil->ui.show_veil) //TODO(fran): true veil processing stop, possibly requiring to release all desktop duplication objects, I dont want to simply stop calling GetNewDesktopImage because Windows will still store more update regions, idk how much extra memory that will entail (TODO(fran): check that), also (embarrassingly) we are using it as our frame timer
+        {
+            TIMEDBLOCK(VeilOutputToCompositor);
+
+            ID3D11Texture2D* new_desktop_texture = GetNewDesktopImage(&Veil->desktop_duplication, Veil->locking_wait_ms);
+            defer{ d3d_SafeRelease(new_desktop_texture); };
+
+            IgnoreUpdate = IgnoreUpdateTimer > 5000.f;
+            if (IgnoreUpdate) IgnoreUpdateTimer = 0;
+            //TODO(fran): ROBUSTNESS: check that the time between updates was short (eg <100ms) before deciding to ignore, do not ignore a new frame if the previous one came much earlier cause it'd be much more probable that we werent the ones who caused it
+
+            if (new_desktop_texture && !IgnoreUpdate)
+            {
+                //RECT wndRc; GetClientRect(Veil->wnd, &wndRc);
+                rc2 wnd_rc = OS::GetWindowRenderRc(Veil->wnd);
+
+                RendererDraw(Veil, new_desktop_texture, wnd_rc.w, wnd_rc.h);
+                OutputToWindowsCompositor(Veil);
+            }
+        }
+        auto dt = TIMEREND(complete_cycle_elapsed);
+        IgnoreUpdateTimer += dt;
+
+        if (!Veil->ui.show_veil && !Veil->ui._ui->render_and_update_screen /*TODO(fran): HACK: find out how to sync everything correctly*/ && dt < (f32)Veil->locking_wait_ms)
+            Sleep(Veil->locking_wait_ms - (u32)dt);
+
+    }
+}
+#else
 internal void VeilProcessing(veil_start_data* start_data)
 {
     veil_state* Veil = (decltype(Veil))alloca(sizeof(*Veil)); zero_struct(*Veil);
@@ -686,3 +818,4 @@ internal void VeilProcessing(veil_start_data* start_data)
 
     }
 }
+#endif

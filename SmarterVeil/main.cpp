@@ -46,6 +46,9 @@
 #define local_persistence static
 #define global_persistence static
 
+#define definition 
+#define declaration 
+
 #define internal static
 //NOTE(fran): compilation time is reduced _a lot_ by marking all functions as internal (static), since it's much less work for the linker, and probably for other reasons too. Here's proof, with _only_ 20 functions in my code, compiling with clang, doing a complete rebuild each time and twice to confirm the values:
 //      no internal:
@@ -206,47 +209,6 @@ internal HWND CreateVeilWindow()
     return wnd;
 }
 
-#if 0
-internal HWND CreateVeilUIWindow()
-{
-    HINSTANCE instance = GetModuleHandleW(nil);
-
-    WNDCLASSEXW wc{ 0 };
-    wc.cbSize = sizeof(wc);
-    wc.style = CS_DBLCLKS;// CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = &_OS::UIProc;
-    wc.hInstance = instance;
-    i32 SmallIconX = GetSystemMetrics(SM_CXSMICON);//TODO(fran): GetSystemMetricsForDpi?
-    i32 LargeIconX = GetSystemMetrics(SM_CXICON);
-    wc.hIcon = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, LargeIconX, LargeIconX, 0);
-    wc.hIconSm = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, SmallIconX, SmallIconX, 0);
-    wc.hCursor = LoadCursorW(nil, IDC_ARROW);
-    wc.lpszClassName = L"veil_ui_class";
-
-    HWND wnd = nil;
-    if (RegisterClassExW(&wc))
-    {
-        wnd = CreateWindowExW(
-#ifdef DEBUG_BUILD
-            0
-#else
-            WS_EX_TOPMOST
-#endif
-            | WS_EX_APPWINDOW | WS_EX_NOREDIRECTIONBITMAP,
-            wc.lpszClassName,
-            appnameL,
-            WS_POPUP | WS_THICKFRAME |
-            WS_MAXIMIZEBOX, //SUPER IMPORTANT NOTE(fran): WS_MAXIMIZEBOX is _required_ for the aero window auto-resizing when touching screen borders
-            0, 0, 0, 0,
-            nil, nil, nil, nil);
-
-        UpdateWindow(wnd);
-    }
-    
-    return wnd;
-}
-#endif
-
 internal DWORD WINAPI _VeilProcessing(LPVOID param) {
     veil_start_data* start_data = (veil_start_data*)param;
     VeilProcessing(start_data);
@@ -256,22 +218,19 @@ internal DWORD WINAPI _VeilProcessing(LPVOID param) {
 
 int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 {
-    OS::SetDPIAware();
 
     HWND veil = CreateVeilWindow();
     if (!veil) return 0;
 
-    OS::window_handle veil_ui = OS::Window((OS::window_creation_flags)(OS::window_creation_flags::topmost | OS::window_creation_flags::notaskbar | OS::window_creation_flags::resizeborder)); 
-    //TODO(fran): we'd want the window to show up in the Alt+Tab menu, can that be done while still not appearing on the taskbar?
-    if (!veil_ui.hwnd) return 0;
+    ui_state* veil_ui_wnd = iu::window((OS::window_creation_flags)(OS::window_creation_flags::topmost | OS::window_creation_flags::resizeborder));
+    if (!veil_ui_wnd->wnd) return 0;
 
     veil_start_data start_data;
     start_data.veil_wnd.hwnd = veil; //TODO(fran): create all windows from OS code
-    start_data.veil_ui_wnd = veil_ui;
-    start_data.main_thread_id = GetCurrentThreadId();//TODO(fran): OS code
+    start_data.veil_ui_base_state = veil_ui_wnd;
 
-#if 0 // Single Thread Version
-    VeilProcessing(veil, &start_data);
+#if 1 // Single Thread Version
+    VeilProcessing(&start_data);
 #else // Separate Thread Version (because of the resizing problem, refer to VeilUIProc's WM_NCLBUTTONDOWN, for info on it)
     DWORD ProcessAndRenderThreadID = 0;
     HANDLE thread_res = CreateThread(nil, 0, _VeilProcessing, &start_data, 0, &ProcessAndRenderThreadID);

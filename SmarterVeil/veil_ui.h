@@ -11,10 +11,38 @@
 #pragma comment(lib, "dwrite")
 
 #include <initializer_list> 
+
+template<typename T>
+struct fixed_array_header {
+    u64 cnt;
+    T* arr;
+
+    T* begin()
+    {
+        return this->cnt ? &arr[0] : nullptr;
+    }
+
+    T* end()
+    {
+        return this->cnt ? &arr[0] + this->cnt : nullptr;
+    }
+
+    const T* begin() const
+    {
+        return this->cnt ? &arr[0] : nullptr;
+    }
+
+    const T* end() const
+    {
+        return this->cnt ? &arr[0] + this->cnt : nullptr;
+    }
+
+};
+
 template<typename T, u64 _cnt>
 struct fixed_array { //TODO(fran): move to basic_array.h
-    T arr[_cnt];
     u64 cnt; //cnt in use / cnt_used
+    T arr[_cnt];
 
     constexpr u64 cnt_allocd()
     {
@@ -34,6 +62,7 @@ struct fixed_array { //TODO(fran): move to basic_array.h
 
     void clear() { this->cnt = 0; zero_struct(this->arr); }
 
+#if 0
     fixed_array<T, _cnt>& operator+=(const T e)//TODO(fran): see if this is a good idea
     {
         if (this->cnt + 1 > this->cnt_allocd()) crash();
@@ -44,6 +73,25 @@ struct fixed_array { //TODO(fran): move to basic_array.h
     fixed_array<T, _cnt>& add(const T e)
     {
         return this += e;
+    }
+#endif
+
+    fixed_array<T, _cnt>& add(T e)
+    {
+        if (this->cnt + 1 > this->cnt_allocd()) crash();
+        this->arr[this->cnt++] = e;
+        return *this;
+    }
+
+    fixed_array<T, _cnt>& remove_idx(u64 idx)
+    {
+        assert(idx < this->cnt);
+
+        if (this->cnt) this->cnt -= 1;
+
+        this[idx] = this[this->cnt];
+
+        return this; //TODO(fran): we may want to return an iterator to the next element? aka this[idx]
     }
 
     fixed_array<T, _cnt>(std::initializer_list<T> elems)
@@ -72,6 +120,8 @@ struct fixed_array { //TODO(fran): move to basic_array.h
     {
         return this->cnt ? &arr[0] + this->cnt : nullptr;
     }
+
+    operator fixed_array_header<T>() { return {this->cnt, this->arr}; }
 };
 
 enum class ui_type {
@@ -482,7 +532,7 @@ enum class input_key_state : u8 {//NOTE(fran): all the states are mutually exclu
     clicked = (1 << 1),
     pressed = (1 << 2),
     unclicked = (1 << 3),
-    //TODO(fran): analyze times between clicks to see if it's worth it to register multiple clicks per run
+    //TODO(fran): analyze times between clicks (or click unclick) to see if it's worth it to register multiple clicks per run
     //TODO(fran): check out rawinput (for gamedev)
 
     //IMPORTANT(fran): OS's handling of double click: 
@@ -537,6 +587,8 @@ struct user_input {
         b32 on_unclick, on_unrclick;
         //TODO(fran): store mouseP
     } tray;
+    
+    //TODO(fran): f32 dt; or calculate dt on our own inside uiprocessing
 };
 
 struct ui_tray_state {
@@ -574,7 +626,7 @@ struct ui_state {
         ui_element* element;
         i64 registration_time; //TODO(fran): look for a better alternative, we should accept the hotkey once the buttons that were pressed to register it are unpressed
         b32 enabled; //TODO(fran): I could instead set registration_time to negative and use that as the enabled flag
-    } global_registered_hotkeys[64];
+    } global_registered_hotkeys[64]; //TODO(fran): as the name implies we want this global, to be a member of iu_state and simply to have a reference here
 
     user_input input;
 
@@ -587,8 +639,11 @@ struct ui_state {
     //b32 _last_mouse_was_inside;
 };
 
-struct veil_ui_state : ui_state {
+namespace iu { declaration internal ui_state* window_contextmenu(); }//TODO(fran): quick HACK
+
+struct veil_ui_state /* : ui_state */ {
     //language_manager LanguageManager;
+    ui_state* _ui; //TODO(fran): try to integrate this again inside veil_ui_state like we did with inheritance
 
     b32 quit;
     
@@ -602,6 +657,8 @@ struct veil_ui_state : ui_state {
     b32 show_veil;
 
     OS::hotkey_data show_ui_hotkey;
+
+    operator ui_state*() { return this->_ui; }
 };
 
 //TODO(fran): store pointer to last element instead of iterating to the end all the time
@@ -934,8 +991,7 @@ struct hotkey_creation_args {
     hotkey_theme* theme;
     OS::hotkey_data* hotkey_value;
     ui_string placeholder_text;
-    //void* context; 
-    //globalhotkey_action_on_triggered* on_hotkey;
+    ui_cursor cursor;
     ui_action on_hotkey;
     ui_element* child;
 };
@@ -944,6 +1000,7 @@ internal ui_element* Hotkey(const hotkey_creation_args& args)
     ui_element* elem = push_type(args.arena, ui_element);
     elem->type = ui_type::hotkey;
     elem->placement = { 0 };
+    elem->cursor = args.cursor;
     elem->child = args.child;
     elem->data.hotkey.theme = *args.theme;
     elem->data.hotkey.on_hotkey = args.on_hotkey;
@@ -953,7 +1010,7 @@ internal ui_element* Hotkey(const hotkey_creation_args& args)
 
     local_persistence i32 hotkey_id = 1; //NOTE(fran): id 0 is invalid
     elem->data.hotkey.current_hotkey.id = hotkey_id++;
-    assert(hotkey_id <= ArrayCount(veil_ui_state::global_registered_hotkeys));
+    assert(hotkey_id <= ArrayCount(ui_state::global_registered_hotkeys));
     elem->data.hotkey.current_hotkey.hk = args.hotkey_value;//TODO(fran): start with a hotkey and try to register it
 
     return elem;
@@ -1080,20 +1137,6 @@ internal RECT rc2_to_RECT(rc2 r)
         .right = (i32)r.right(),
         .bottom = (i32)r.bottom(),
     };
-    return res;
-}
-
-internal OS::window_handle VeilUIWindow()
-{
-    OS::window_creation_flags flags = (OS::window_creation_flags)
-        (OS::window_creation_flags::resizeborder | OS::window_creation_flags::topmost);
-    auto res = OS::Window(flags);
-    return res;
-}
-
-internal OS::window_handle ContextMenuWindow()
-{
-    auto res = OS::Window(OS::contextmenu);
     return res;
 }
 
@@ -1500,7 +1543,6 @@ internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_t
     res->keyboard_focus = nil;
     res->placement = { 0 };
     res->render_and_update_screen = true;
-    res->is_context_menu = is_context_menu;
 
     local_persistence i32 alloc_cnt = 0;
 
@@ -1517,6 +1559,8 @@ internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_t
 
     if (!already_initialized)
     {
+        res->is_context_menu = is_context_menu; //TODO(fran): allow changing a window from normal to context_menu?
+
         res->scaling = GetNewScaling(res); //TODO(fran): this is actually wrong since we dont yet know the location of the window and therefore the dpi of its containing monitor, this only works for single monitor setups
         res->_last_scaling = res->scaling;
 
@@ -1534,6 +1578,7 @@ internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, u64 main_t
 
     initialize_arena(&res->permanent_arena, (u8*)mem, total_sz);
     assert(res->permanent_arena.base);
+    //TODO(fran): zero memory, VirtualAlloc does it the first time, but after that it'll be filled with garbage
 
     zero_struct(res->global_registered_hotkeys);
 
@@ -1561,15 +1606,15 @@ internal void ReleaseUIState(ui_state* ui) {
     ReleaseWindowsUICompositor(&veil_ui->compositor);
 #endif
     
-    if (ui->context_menu) {//TODO(fran): ui will not have pointers to other uis
-        ReleaseUIState(ui->context_menu);
-        free(ui->context_menu);
-    }
+    //if (ui->context_menu) {//TODO(fran): ui will not have pointers to other uis
+    //    ReleaseUIState(ui->context_menu);
+    //    free(ui->context_menu);
+    //}
 }
 
 internal void AcquireTrayIcon(ui_tray_state* res, OS::window_handle wnd, /*const*/ veil_ui_state* veil_ui) //TODO(fran): OS code, independent of veil_ui
 {
-    assert(veil_ui->wnd.hwnd == wnd.hwnd);
+    assert(veil_ui->_ui->wnd == wnd);
     //TODO(fran): OS code
     //TODO(fran): later we may want to return or receive some object that contains all the properties of the tray element, eg actions on the different clicks, and the right click menu
     //NOTE(fran): realistically one application always has at most one tray icon, we wont bother with handling multiple ones
@@ -1635,7 +1680,7 @@ internal s8 GetUIStringStr(ui_state* ui, const ui_string& text)
 internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area) //TODO(fran): the basic OS ui shouldnt be dependent on veil_ui, maybe then some variables like quit & others need to be stored in ui_state
 {
 #ifdef OS_WINDOWS
-    memory_arena* arena = &veil_ui->permanent_arena;
+    memory_arena* arena = &veil_ui->_ui->permanent_arena;
 
     //TODO(fran): change to the inactive state
 
@@ -1807,7 +1852,7 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
             auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
             renderer2D->SetAntialiasMode(antialias_mode); //NOTE(fran): for this 1pixel wide drawings aliased mode is best
 
-            if (OS::IsWindowMaximized(veil_ui->wnd))
+            if (OS::IsWindowMaximized(veil_ui->_ui->wnd))
             {
                 f32 d = square.w * .25f;
                 f32 half_d = d * .5f;
@@ -1886,27 +1931,27 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
     //TODO(fran): possibly a BUG: the first frame after maximizing is awful, you can see the application name in size 100 covering half your screen (idk whether this is a directx auto-stretching bug or a problem in my code)
     auto Caption_MaximizeOrRestore = UI_ACTION_LAMBDA{
         veil_ui_state * veil_ui = (decltype(veil_ui))context;
-        POINT screenP{ (i32)veil_ui->input.screen_mouseP.x, (i32)veil_ui->input.screen_mouseP.x };
-        CancelInteraction(veil_ui); //TODO(fran): same HACK from Move() code (WM_NCLBUTTONDOWN)
-        PostMessage(veil_ui->wnd.hwnd, WM_NCLBUTTONDBLCLK, HTCAPTION, MAKELPARAM(screenP.x, screenP.y));
+        POINT screenP{ (i32)veil_ui->_ui->input.screen_mouseP.x, (i32)veil_ui->_ui->input.screen_mouseP.x };
+        CancelInteraction(veil_ui->_ui); //TODO(fran): same HACK from Move() code (WM_NCLBUTTONDOWN)
+        PostMessage(veil_ui->_ui->wnd.hwnd, WM_NCLBUTTONDBLCLK, HTCAPTION, MAKELPARAM(screenP.x, screenP.y));
     };
 
     auto MaximizeOrRestore = UI_ACTION_LAMBDA{
         veil_ui_state * veil_ui = (decltype(veil_ui))context;
-        if (IsWindowMaximized(veil_ui->wnd)) OS::RestoreWindow(veil_ui->wnd);
-        else OS::MaximizeWindow(veil_ui->wnd);
+        if (IsWindowMaximized(veil_ui->_ui->wnd)) OS::RestoreWindow(veil_ui->_ui->wnd);
+        else OS::MaximizeWindow(veil_ui->_ui->wnd);
     };
 
     auto Move = UI_ACTION_LAMBDA{
         veil_ui_state * veil_ui = (decltype(veil_ui))context;
 
-        POINT screenP{ (i32)veil_ui->input.screen_mouseP.x, (i32)veil_ui->input.screen_mouseP.x };
+        POINT screenP{ (i32)veil_ui->_ui->input.screen_mouseP.x, (i32)veil_ui->_ui->input.screen_mouseP.x };
 
-        CancelInteraction(veil_ui);
+        CancelInteraction(veil_ui->_ui);
         //TODO(fran): HACK: we need to immediately cancel the interaction because once WM_NCLBUTTONDOWN is sent Windows takes over and does the usual Windows things, ending with the fact that we dont get the WM_LBUTTONUP msg, therefore the interacting element is never updated and requires an extra click from the user to reset it before they can interact with anything else
             //This is in response to this BUG: the first click after window moving is finished (aka after the user releases the mouse) isnt registered
 
-        PostMessage(veil_ui->wnd.hwnd, WM_NCLBUTTONDOWN, HTCAPTION, MAKELPARAM(screenP.x, screenP.y));
+        PostMessage(veil_ui->_ui->wnd.hwnd, WM_NCLBUTTONDOWN, HTCAPTION, MAKELPARAM(screenP.x, screenP.y));
     };
 
     auto Quit = UI_ACTION_LAMBDA{
@@ -1919,14 +1964,14 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
     auto ContextMenu = UI_ACTION_LAMBDA{
         veil_ui_state * veil_ui = (decltype(veil_ui))context;
 
-        if(veil_ui->context_menu)
+        //TODO(fran): this is something the Iu createwindow handler should do for us
+        if(veil_ui->_ui->context_menu)
         {
-            AcquireUIState(veil_ui->context_menu, veil_ui->context_menu->wnd, veil_ui->main_thread_id, true);
+            AcquireUIState(veil_ui->_ui->context_menu, veil_ui->_ui->context_menu->wnd, veil_ui->_ui->main_thread_id);
         }
         else
         {
-            veil_ui->context_menu = (ui_state*)malloc(sizeof(ui_state)); zero_struct(*veil_ui->context_menu);
-            AcquireUIState(veil_ui->context_menu, ContextMenuWindow(), veil_ui->main_thread_id, true);
+            veil_ui->_ui->context_menu = iu::window_contextmenu();
         }
 
         contextmenu_button_theme contextbutton_theme =
@@ -2103,8 +2148,8 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
 
         auto MaximizeOrRestore = UI_ACTION_LAMBDA{
             veil_ui_state* veil_ui = (decltype(veil_ui))context;
-            if (IsWindowMaximized(veil_ui->wnd)) OS::RestoreWindow(veil_ui->wnd);
-            else OS::MaximizeWindow(veil_ui->wnd);
+            if (IsWindowMaximized(veil_ui->_ui->wnd)) OS::RestoreWindow(veil_ui->_ui->wnd);
+            else OS::MaximizeWindow(veil_ui->_ui->wnd);
         };
 
         auto KeyboardMove = UI_ACTION_LAMBDA{
@@ -2127,7 +2172,7 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
         };
 
         //TODO(fran): move ui structure code outside
-        memory_arena* arena = &veil_ui->permanent_arena;
+        memory_arena* arena = &veil_ui->_ui->permanent_arena;
 
         local_persistence utf8 strs[6][50]; //TODO(fran): get rid of this, we can now simply send the string by id
         s8 restore = { .chars = strs[0], .cnt_allocd = ArrayCount(strs[0]) };
@@ -2140,18 +2185,18 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
         OS::hotkey_data close_hotkey{.vk = VK_F4, .mods=MOD_ALT}; //TODO(fran): OS code
 
 
-        restore += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 1 });
-        move += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 2 });
-        size += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 3 });
-        minimize += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 4 });
-        maximize += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 5 });
+        restore += GetUIStringStr(veil_ui->_ui->context_menu, { .type = ui_string_type::id, .str_id = 1 });
+        move += GetUIStringStr(veil_ui->_ui->context_menu, { .type = ui_string_type::id, .str_id = 2 });
+        size += GetUIStringStr(veil_ui->_ui->context_menu, { .type = ui_string_type::id, .str_id = 3 });
+        minimize += GetUIStringStr(veil_ui->_ui->context_menu, { .type = ui_string_type::id, .str_id = 4 });
+        maximize += GetUIStringStr(veil_ui->_ui->context_menu, { .type = ui_string_type::id, .str_id = 5 });
 
-        close += GetUIStringStr(veil_ui->context_menu, { .type = ui_string_type::id, .str_id = 6 });
+        close += GetUIStringStr(veil_ui->_ui->context_menu, { .type = ui_string_type::id, .str_id = 6 });
         
         ui_cursor Hand = { .type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
 
 #if 1
-        veil_ui->context_menu->elements = SubelementTable(arena, 3,
+        veil_ui->_ui->context_menu->elements = SubelementTable(arena, 3,
             //TODO(fran): disable Restore when not maximized & Move,Size,Maximize when maximized
             {
                 .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}},
@@ -2226,11 +2271,12 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
 #endif
 #endif
 
-        rc2 r = rc2_from(veil_ui->input.screen_mouseP + v2{1.f,0.f}, {1.f,1.f}); //TODO(fran): HACK: I move the window one pixel to the side so it does not immediately collide with the first element in the context menu, on windows the first couple leftmost pixels of the menu are empty
-        OS::MoveWindow(veil_ui->context_menu->wnd, r);
-        OS::ShowWindow(veil_ui->context_menu->wnd);
-        BringWindowToTop(veil_ui->context_menu->wnd.hwnd); //TODO(fran): OS code //TODO(fran): this isnt required, but im sure we can find some edge cases where it is
-        SetForegroundWindow(veil_ui->context_menu->wnd.hwnd);//TODO(fran): OS code //NOTE: this is necessary because we reuse the windows, therefore the first time (when the window _is_ actually created) it automatically becomes the foreground window, but later uses of the window wont
+        rc2 r = rc2_from(veil_ui->_ui->input.screen_mouseP + v2{1.f,0.f}, {1.f,1.f}); //TODO(fran): HACK: I move the window one pixel to the side so it does not immediately collide with the first element in the context menu, on windows the first couple leftmost pixels of the menu are empty
+        OS::MoveWindow(veil_ui->_ui->context_menu->wnd, r);
+        OS::ShowWindow(veil_ui->_ui->context_menu->wnd);
+        //BringWindowToTop(veil_ui->context_menu->wnd.hwnd); //TODO(fran): OS code //TODO(fran): this isnt required, but im sure we can find some edge cases where it is
+        OS::SendWindowToTop(veil_ui->_ui->context_menu->wnd);
+        SetForegroundWindow(veil_ui->_ui->context_menu->wnd.hwnd);//TODO(fran): OS code //NOTE: this is necessary because we reuse the windows, therefore the first time (when the window _is_ actually created) it automatically becomes the foreground window, but later uses of the window wont
         
         //TODO(fran): instead of doing a direct show it's probably better to activate some interal flag, eg: b32 active;
     };
@@ -2239,7 +2285,7 @@ internal void CreateOSUIElements(veil_ui_state* veil_ui, ui_element* client_area
     //TODO(fran): assign system default UI font to the application title. Also idk why but the text in the title looks worse than in areas inside the "client" region
     //TODO(fran): on Windows when the window is maximized the nc arena needs to be moved down by the height of the top resize border. Currently we solve this by just hacking it and applying a Y offset before calling render
 
-    veil_ui->elements = /*v*/ VSizer(arena, sizer_alignment::top,
+    veil_ui->_ui->elements = /*v*/ VSizer(arena, sizer_alignment::top,
         { .sizing = os_nonclient_top, .element = /*h*/ HSizer(arena, sizer_alignment::left,
                 {.sizing = full_bounds_sizing, .element = /*nc_bk*/ Background(.arena = arena, .theme = &nonclient_bk_theme, .on_click = {.context = veil_ui, .action = Move}, .on_doubleclick = {.context = veil_ui, .action = Caption_MaximizeOrRestore}, .on_unrclick = {.context = veil_ui, .action = ContextMenu},
                     .child = /*nc_v*/ VSizer(arena, sizer_alignment::top,
@@ -2429,7 +2475,7 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         .bounds = {.scale_factor = .9f},
     };
     
-    memory_arena* arena = &veil_ui->permanent_arena;
+    memory_arena* arena = &veil_ui->_ui->permanent_arena;
 
 
 #if 0
@@ -2498,6 +2544,7 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
     };
 
     ui_cursor Hand = { .type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
+    ui_cursor Text = { .type = ui_cursor_type::os, .os_cursor = OS::cursor_style::text };
 
     ui_element* layout = VSizer(arena, sizer_alignment::top,
         { .sizing = full_bounds_sizing, .element = HSizer(arena, sizer_alignment::left,
@@ -2513,7 +2560,7 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
                                 {.sizing = TEST_filler_pad, .element = HPad(arena)}
                             )},
                             {.sizing = vertical_trio_sizing, .element = /*bot_third*/ HSizer(arena, sizer_alignment::center,
-                                {.sizing = hotkey_sizing, .element = VSizer(arena, sizer_alignment::center, {.sizing = threequarters_bounds_sz, .element = Hotkey(.arena = arena, .theme = &base_hotkey_theme, .hotkey_value = &veil_ui->show_ui_hotkey,.placeholder_text = {.type = ui_string_type::id, .str_id = 52u }, .on_hotkey = {.context = (ui_state*)veil_ui, .action = common_ui_actions::MinimizeRestoreUI})})}
+                                {.sizing = hotkey_sizing, .element = VSizer(arena, sizer_alignment::center, {.sizing = threequarters_bounds_sz, .element = Hotkey(.arena = arena, .theme = &base_hotkey_theme, .hotkey_value = &veil_ui->show_ui_hotkey,.placeholder_text = {.type = ui_string_type::id, .str_id = 52u }, .cursor = Text, .on_hotkey = {.context = (ui_state*)veil_ui, .action = common_ui_actions::MinimizeRestoreUI})})}
                             )}
                         )}
                     )}
@@ -2535,16 +2582,20 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
     // Behind the scenes storing the current layout and closing it and changing to the previous one is all very easy to do
 #endif
 
-#if 0
+#if 0 //os_managed
     veil_ui->elements = layout;
 #else
     CreateOSUIElements(veil_ui, layout);
 #endif
 }
 
-internal void AcquireVeilUIState(veil_ui_state* res, OS::window_handle veil_ui_wnd, u64 main_thread_id)
+internal void AcquireVeilUIState(veil_ui_state* res, ui_state* veil_ui_base_state, u64 main_thread_id=0/*TODO(fran): UNUSED*/)
 {
+#if 0
     AcquireUIState(res, veil_ui_wnd, main_thread_id);
+#else
+    res->_ui = veil_ui_base_state;
+#endif
 
     //TODO(fran): retrieve settings from save file, metaprogramming
     res->threshold = .5f;//TODO(fran): what if the user only changed the threshold?
@@ -2573,10 +2624,10 @@ internal void AcquireVeilUIState(veil_ui_state* res, OS::window_handle veil_ui_w
     wnd_x = wnd_y = 100;
 #endif
 
-    OS::MoveWindow(res->wnd, { (f32)wnd_x, (f32)wnd_y, (f32)wnd_w, (f32)wnd_h });
-    OS::ShowWindow(res->wnd);
+    OS::MoveWindow(res->_ui->wnd, { (f32)wnd_x, (f32)wnd_y, (f32)wnd_w, (f32)wnd_h });
+    OS::ShowWindow(res->_ui->wnd);
 
-    res->placement =
+    res->_ui->placement =
     {
         .x = (f32)wnd_x,
         .y = (f32)wnd_y,
@@ -2585,21 +2636,21 @@ internal void AcquireVeilUIState(veil_ui_state* res, OS::window_handle veil_ui_w
         //TODO(fran): make sure this does not include the nonclient area
     };
 
-    res->context_menu = nil;
+    res->_ui->context_menu = nil;
 
-    res->elements = nil;
+    res->_ui->elements = nil;
 
     CreateVeilUIElements(res);
 
-    AcquireTrayIcon(&res->tray, res->wnd, res);
+    AcquireTrayIcon(&res->_ui->tray, res->_ui->wnd, res);
 
     //TODO(fran): SUPERBUG: right click to open context menu, change dpi, right click again -> universe explodes (potentially some dpi super-scaling bug)
 }
 
 internal void ReleaseVeilUIState(veil_ui_state* veil_ui) {
-    ReleaseUIState(veil_ui);
+    //ReleaseUIState(veil_ui);
 
-    ReleaseTrayIcon(&veil_ui->tray);
+    ReleaseTrayIcon(&veil_ui->_ui->tray);
 }
 
 internal void EnableRendering(ui_state* ui)
@@ -2802,19 +2853,17 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, user_input
         if (last_interaction_st != element->interaction_st) EnableRendering(ui);
     }
 
-    if (ui->under_the_mouse != next_hot)//TODO(fran): add extra check, while on interaction we mustnt change the cursor, it must remain with the look that the element being interacted wants
+    //NOTE(fran): only the window directly under the mouse can change the mouse icon
+    if (next_hot && ui->under_the_mouse != next_hot) //TODO(fran): extra check: while on interaction (by any iu window) we mustnt change the cursor, it must remain with the look that the element being interacted wants
     {
-        OS::cursor_style cursor;
-        if (next_hot) 
-        { 
-            assert(next_hot->cursor.type == ui_cursor_type::os); //TODO(fran): custom cursors
-            cursor = next_hot->cursor.os_cursor;
-        }
-        else cursor = OS::cursor_style::arrow;
-#if 0 //TODO(fran): setcursor doesnt work from here for some reason, but it does work from the main thread by using sendmessage which is what _SetCursor does
-        OS::SetCursor(cursor);
+        assert(next_hot->cursor.type == ui_cursor_type::os); //TODO(fran): custom cursors
+        OS::cursor_style cursor = next_hot->cursor.os_cursor;
+#if 1
+        OS::SetCursor(cursor); //NOTE(fran): WINDOWS: only works if the ui & input threads are attached, see AttachThreadInput
 #else
         OS::_SetCursor(ui->wnd, cursor);
+        //if(ui->context_menu) OS::_SetCursor(ui->context_menu->wnd, cursor);
+
 #endif
         //TODO(fran): later on we'd want more control over the cursor, probably to be handled on the on_mouseover action of each element
     }
@@ -4216,6 +4265,8 @@ internal void UIProcessing(ui_state* ui)
         ui->_last_scaling = ui->scaling;
     }
 
+    utf8 mousepstr[32]; snprintf((char*)mousepstr, ArrayCount(mousepstr), "mouseP:(%.1f,%.1f)\n", ui->input.mouseP.x, ui->input.mouseP.y); OutputDebugStringA((char*)mousepstr);
+
     //CheckMouseExitsBounds(ui);
 
     input_results input_res = InputUpdate(ui->elements, &ui->input); //TODO(fran): retrieve the input from inside the function
@@ -4242,13 +4293,12 @@ internal void UIProcessing(ui_state* ui)
     #else
         OutputToScreen(ui);
     #endif
+
     }
 
     //TODO(fran): we may want to have a destroy method to execute before the app closes to do anything necessary, like for example unregistering global hotkeys (though I'd assume the OS does it on its own?)
 
     //TODO(fran): when the window is minimized animations should be paused
-
-    //TODO(fran): BUG: main window maximized, press right click over its title bar and when the context menu opens the main window loses its maximized flag and gets rendered with the incorrect Y offset
 
     //TODO(fran): change mouse icon based on interaction state, allow user to define the mouse icon to use in each case for each element
 
@@ -4257,4 +4307,427 @@ internal void UIProcessing(ui_state* ui)
     //TODO(fran): additional root components, to add for example debug information like timings
 
     //TODO(fran): interaction passthrough, so for example we can define all elements on the title bar to be rclick_passthrough and so the right click gets sent to the background, which triggers the contextmenu
+
+    //TODO(fran): BUG: replicate: move the mouse to the background, move the mouse to the closest nonclient border, move the mouse back to the background, the mouse icon will remain as the resizing one, since the previous and new under_the_mouse element are the same (the background), so we dont update the mouse icon
+        //Solution: we need to re-update the mouse style when we go from the nonclient to the client
+
+    //SMALL TODO(fran): tiny BUG: right click the titlebar to open the context menu, move the mouse slightly towards the menu, for one frame the mouse icon will change to the arrow with loading circle style before changing back to the arrow
+}
+
+template<typename T>
+struct fifo_queue {
+    u64 cnt;
+    u64 cnt_allocd;
+    u64 current;
+    T* arr;
+
+    //NOTE(fran): this can be used multi-threaded as long as there's only 2 threads & one only pushes and the other one only pops, and non stalls horribly
+        //TODO(fran): better multi-threading support, at least make sure this basic case always works
+
+    void push(T elem)
+    {
+        this->arr[this->cnt] = elem;
+        this->cnt = this->cnt + 1 >= this->cnt_allocd ? 0 : this->cnt + 1;
+    }
+
+    //TODO(fran): we may want to only return a pointer to the element
+    struct pop_res { b32 found; T elem; };
+    pop_res pop() //TODO(fran): we may only want to peek at all the elements without advancing the current 'pointer'
+    {
+        pop_res res;
+        u64 current_cnt = *(volatile u64*)&this->cnt; //TODO(fran): force compiler to do a copy, maybe use volatile? though we only need a copy here, not in push()
+        res.found = this->current != current_cnt;
+        if (res.found) 
+        {
+            res.elem = this->arr[this->current];
+            this->current = this->current + 1 >= this->cnt_allocd ? 0 : this->current + 1;
+        }
+        return res;
+    }
+
+    b32 pop(T* res) //TODO(fran): we may only want to peek at all the elements without advancing the current 'pointer'
+    {
+        auto [found, elem] = this->pop();
+        *res = elem;
+        return found;
+    }
+};
+
+namespace iu {
+    
+    IF_OS_WINDOWS(struct win32_event { HWND hwnd; UINT msg; WPARAM wparam; LPARAM lparam; });
+
+    declaration internal void io_thread_handler();
+
+    struct iu_state {
+        memory_arena arena;
+        struct {
+            fixed_array<ui_state*, 128> active{};
+            fixed_array<ui_state*, 128> inactive{};
+        } windows;
+        struct {
+            fixed_array<ui_state*, 16> active{};
+            fixed_array<ui_state*, 16> inactive{};
+        }contextmenuwindows;
+        
+        IF_OS_WINDOWS(fifo_queue<win32_event> events); //TODO(fran): OS independent event
+        IF_OS_WINDOWS(HANDLE io_thread);
+
+        iu_state() 
+        {
+            u64 sz = Megabytes(1);
+            void* mem = VirtualAlloc(nil, sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            assert(mem); //TODO(fran): release build assertion
+
+            initialize_arena(&this->arena, (u8*)mem, sz);
+
+            OS::SetDPIAware();
+
+            IF_OS_WINDOWS(
+                constexpr int event_cap = 1000;
+                this->events = { .cnt = 0, .cnt_allocd = event_cap, .current = 0, .arr = push_arr(&this->arena, win32_event, event_cap) };
+                this->io_thread = ::CreateThread(nil, 0, [](void*)->DWORD {io_thread_handler(); return 0; }, nil, 0, nil);
+                //::AttachThreadInput(::GetThreadId(this->io_thread), ::GetCurrentThreadId(),true); //TODO(fran): doesnt work either way, maybe because the msg queues havent been created in neither thread???
+            );
+        }
+
+        ~iu_state() 
+        {
+            fixed_array_header<ui_state*> all[] = { this->windows.active, this->contextmenuwindows.active, this->windows.inactive, this->contextmenuwindows.inactive };
+
+            for (auto& a : all)
+                for (auto& ui : a)
+                    ReleaseUIState(ui);
+
+            VirtualFree((void*)this->arena.base, 0, MEM_RELEASE);
+            zero_struct(this->arena);
+            IF_OS_WINDOWS(TerminateThread(this->io_thread, 0)); //TODO(fran): we may want to do termination from inside the thread, TerminateThread is not too safe
+            //fixed_array_header<ui_state*> arrs[] = { windows.active, windows.inactive, contextmenuwindows.active, contextmenuwindows.inactive };
+            //for(auto& a : arrs)
+            //    for(auto& w : a)
+                    //TODO(fran): any per window destruction needed?
+        }
+
+    } local_persistence state;
+
+    iu_state* get_state() { return &state; }
+
+    definition internal void io_thread_handler()
+    {
+        //TODO(fran): we could move all this msg processing code to the OS specific section and simply provide access to the iu's message queue
+        while (true)
+        {
+            MSG msg;
+            //NOTE(fran): under the hood PeekMessage is responsible for handling SendMessage (aka dispatching straight to the wndproc), the msgs sent through that way are hidden from the main msg queue & not available to the user, aka me, or at least I havent found a way to get to them yet before they are dispatched
+            while (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE))
+            {
+                //GetMessageW(&msg, 0, 0, 0);
+                TranslateMessage(&msg);
+
+                switch (msg.message)
+                {
+                    case WM_LBUTTONDOWN:
+                    {
+                        SetCapture(msg.hwnd);
+                        goto push_event;
+                    } break;
+                    case WM_LBUTTONUP:
+                    {
+                        ReleaseCapture();
+                        goto push_event;
+                    } break;
+                    case WM_MOUSEMOVE:
+                    {
+                        TRACKMOUSEEVENT tme{ .cbSize = sizeof(tme), .dwFlags = TME_LEAVE, .hwndTrack = msg.hwnd };
+                        ::TrackMouseEvent(&tme); //TODO(fran): only ask for tracking if not already tracking
+                        goto push_event;
+                    } break;
+                    case WM_TRAY:
+                    case WM_DPICHANGED_CUSTOM:
+                    {
+                        goto push_event_no_dispatch;
+                    } break;
+                    //case WM_CHAR:
+                    //case WM_KEYDOWN:
+                    //case WM_SIZE:
+                    //case WM_HOTKEY: //NOTE(fran): it is sent straight to the other thread by Windows
+                    //TODO(fran): case WM_MOUSEHWHEEL:
+                    case WM_QUIT:
+                    case WM_LBUTTONDBLCLK:
+                    case WM_RBUTTONDOWN:
+                    case WM_RBUTTONUP:
+                    case WM_RBUTTONDBLCLK:
+                    case WM_SYSKEYDOWN:
+                    case WM_KEYDOWN:
+                    case WM_MOUSEWHEEL:
+                    case WM_MOUSELEAVE:
+                    {
+                        push_event:
+                            get_state()->events.push({ .hwnd = msg.hwnd, .msg = msg.message, .wparam = msg.wParam, .lparam = msg.lParam });
+                            break;
+                        push_event_no_dispatch:
+                            get_state()->events.push({ .hwnd = msg.hwnd, .msg = msg.message, .wparam = msg.wParam, .lparam = msg.lParam });
+                            continue;
+                    } break;
+                }
+                DispatchMessageW(&msg);
+            }
+            ::MsgWaitForMultipleObjectsEx(0, nil, INFINITE, QS_ALLINPUT, 0 | MWMO_ALERTABLE | MWMO_INPUTAVAILABLE); //TODO(fran): MWMO_INPUTAVAILABLE
+        }
+    }
+
+    internal void PreAdjustInput(user_input* ui_input)
+    {
+        ui_input->hotkey = { 0 };
+        ui_input->global_hotkey_id = 0;//TODO(fran): we could also send the full info, id+vk+mods
+        ui_input->mouseVScroll = 0;
+
+        for (i32 i = 0; i < ArrayCount(ui_input->keys); i++)
+            if (ui_input->keys[i] == input_key_state::clicked || ui_input->keys[i] == input_key_state::doubleclicked)
+                ui_input->keys[i] = input_key_state::pressed;
+
+        //IMPORTANT NOTE(fran): We'll use Windows style right click handling, where it does not care about anything but the element that was under the mouse when the unrclick event happens. This means we wont have an interacting_with element and therefore we need to manually reset the key state in order to avoid infinite key repeats
+            //TODO(fran): this may need to be specialized for different OSs inside veil_ui
+        if (ui_input->keys[input_key::right_mouse] == input_key_state::unclicked)
+            ui_input->keys[input_key::right_mouse] = {};
+
+        ui_input->tray.on_unclick = false;
+        ui_input->tray.on_unrclick = false;
+    }
+
+    internal void GetInput(ui_state* ui, MSG msg)
+    {
+        user_input& ui_input = ui->input;
+        //TODO(fran): msg.hwnd is null when clicking inside the client area of the window, we cant know which window is being addressed if we had multiple ones (all this because PostThreadMessageW doesnt let you pass the hwnd, is there a way to pass it?)
+                    //if (msg.hwnd == Veil->ui.wnd) { //Check for interesting messages to the UI
+
+        //IMPORTANT TODO(fran): now we have hwnds created on both threads we'd need to copy the extra handling that we have on specific messages on the main thread, eg SetCapture(),...
+        switch (msg.message)
+        {
+        case WM_DPICHANGED_CUSTOM:
+        {
+            ui->scaling = (f32)LOWORD(msg.wParam) / 96.f /*aka USER_DEFAULT_SCREEN_DPI */;
+            assert(LOWORD(msg.wParam) == HIWORD(msg.wParam));
+            //RECT suggested_window = *(RECT*)msg.lParam;
+            //MovWindow(Veil->wnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
+        } break;
+        case WM_MOUSEMOVE:
+        {
+            POINT p{ GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam) };
+            POINT screenP = p;
+            MapWindowPoints(ui->wnd.hwnd, HWND_DESKTOP, &screenP, 1);
+
+            ui_input.mouseP = v2_from(p.x, p.y);
+
+            ui_input.screen_mouseP = v2_from(screenP.x, screenP.y);
+        } break;
+        case WM_MOUSELEAVE:
+        {
+            ui_input.mouseP = ui_input.screen_mouseP = 
+            #ifdef DEBUG_BUILD
+                { -1, -1 }; //NOTE(fran): for ease of debugging
+            #else
+                { F32MIN, F32MIN };
+            #endif
+        } break;
+        case WM_LBUTTONDOWN:
+        {
+            ui_input.keys[input_key::left_mouse] = input_key_state::clicked;
+        } break;
+        case WM_LBUTTONUP:
+        {
+            ui_input.keys[input_key::left_mouse] = input_key_state::unclicked;
+        } break;
+        case WM_LBUTTONDBLCLK:
+        {
+            ui_input.keys[input_key::left_mouse] = input_key_state::doubleclicked;
+        } break;
+        case WM_RBUTTONDOWN:
+        {
+            ui_input.keys[input_key::right_mouse] = input_key_state::clicked;
+        } break;
+        case WM_RBUTTONUP:
+        {
+            ui_input.keys[input_key::right_mouse] = input_key_state::unclicked;
+        } break;
+        case WM_RBUTTONDBLCLK:
+        {
+            ui_input.keys[input_key::right_mouse] = input_key_state::doubleclicked;
+        } break;
+        case WM_SYSKEYDOWN:
+        case WM_KEYDOWN:
+        {
+            b32 ctrl_is_down = HIBYTE(GetKeyState(VK_CONTROL));
+            b32 alt_is_down = HIBYTE(GetKeyState(VK_MENU));
+            b32 shift_is_down = HIBYTE(GetKeyState(VK_SHIFT));
+
+            u8 vk = (u8)msg.wParam;
+
+            //TODO(fran): keyboard keys should also have clicked, pressed and unclicked states
+
+            switch (vk) {
+            case VK_LWIN: case VK_RWIN:
+            case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
+            case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
+            case VK_MENU:
+            case VK_F12:
+            {
+                ui_input.hotkey.vk = (u8)0;
+                ui_input.hotkey.translation_nfo = 0;
+            } break;
+            default:
+            {
+                ui_input.hotkey.vk = (u8)vk;
+                ui_input.hotkey.translation_nfo = msg.lParam;
+            } break;
+            }
+            ui_input.hotkey.mods = (ctrl_is_down ? MOD_CONTROL : 0) | (alt_is_down ? MOD_ALT : 0) | (shift_is_down ? MOD_SHIFT : 0);
+        } break;
+        case WM_HOTKEY: //NOTE(fran): system-wide global hotkey
+        {
+            i32 id = msg.wParam;
+            u16 mods = LOWORD(msg.lParam);
+            u8 vk = HIWORD(msg.lParam);
+            ui_input.global_hotkey_id = id;
+        } break;
+        case WM_MOUSEWHEEL:
+        {
+            //TODO(fran): we can also use the wParam to get the state of Ctrl, Shift, Mouse Click & others
+            f32 zDelta = (f32)GET_WHEEL_DELTA_WPARAM(msg.wParam) / (f32)WHEEL_DELTA;
+            //NOTE(fran): zDelta indicates the number of units to scroll (the unit will be determined by whoever handles the scroll)
+            ui_input.mouseVScroll = zDelta;
+        } break;
+        case WM_TRAY:
+        {
+            switch (LOWORD(msg.lParam))
+            {
+                //NOTE(fran): for some reason the tray only sends WM_LBUTTONDOWN once the mouse has been released, so here WM_LBUTTONDOWN counts as WM_LBUTTONUP, same for right click
+            case WM_LBUTTONDOWN:
+            {
+                ui_input.tray.on_unclick = true;
+            } break;
+            case WM_RBUTTONDOWN:
+            {
+                ui_input.tray.on_unrclick = true;
+            } break;
+            }
+        } break;
+        }
+        //}
+    }
+
+    internal void update_and_render()
+    {
+        //TODO(fran): move windows to inactive state or let the ui itself do it?
+        auto state = get_state();
+
+        IF_OS_WINDOWS(
+            local_persistence b32 ret = ::AttachThreadInput(::GetCurrentThreadId(), ::GetThreadId(state->io_thread), true);
+            assert(ret);
+            //NOTE(fran): works here, it probably needed the msg queues to be already initialized
+            //TODO(fran): it can happen that this function is called when no windows have yet been created on the threads (also im currently creating a window on the main thread by hand but that shouldnt happen normally), we should add some code that makes sure that both threads can be attached:
+                //Docs say: The AttachThreadInput function fails if either of the specified threads does not have a message queue. The system creates a thread's message queue when the thread makes its first call to one of the USER or GDI functions
+        );
+        
+        fixed_array_header<ui_state*> all[] = { state->windows.active, state->contextmenuwindows.active, state->windows.inactive, state->contextmenuwindows.inactive };
+        fixed_array_header<ui_state*> actives[] = { state->windows.active, state->contextmenuwindows.active };
+
+        for (auto& a : all)
+            for (auto& ui : a)
+                PreAdjustInput(&ui->input);
+
+        win32_event event;
+        while (state->events.pop(&event))
+        {
+            //TODO(fran): OPTIMIZE: hashtable?
+            for (auto& a : all)
+                for (auto& ui : a)
+                {
+                    if (ui->wnd.hwnd == event.hwnd) //TODO(fran): find out if some broadcast messages simply have the hwnd set to null, in that case we'd need to send that single event to all windows
+                    {
+                        MSG msg = { .hwnd = event.hwnd, .message = event.msg, .wParam = event.wparam, .lParam = event.lparam };
+                        GetInput(ui, msg);
+                        goto next_event; //TODO(fran): find out how to skip to the next while step without goto
+                    }
+                }
+        next_event:
+            int a;
+        }
+
+        //TODO(fran): AdjustMouse, but first try to fix it with WM_MOUSELEAVE
+
+        //TODO(fran): one frame initialization for global ui things
+        //Temporary Arena initialization
+        ui_state* ui = state->windows.active.arr[0]; //TODO(fran): lang mgr should be global and not obtained through a window in this hacky way
+        initialize_arena(&ui->LanguageManager->temp_string_arena, ui->LanguageManager->_temp_string_arena, sizeof(ui->LanguageManager->_temp_string_arena));
+
+        for (auto& a : actives)
+            for (auto& ui : a)
+                UIProcessing(ui);
+    }
+
+    internal OS::window_handle _createwindow(OS::window_creation_flags creation_flags)
+    {
+        OS::window_handle res;
+        //TODO(fran): OS independent, not only for Windows' crap
+        //TODO(fran): looks like a combination of AttachThreadInput & QueueUserAPC could solve all my problems
+        auto state = get_state();
+        
+        //TODO(fran): remove the b32 done and check the wnd handle?
+        struct _create_wnd { OS::window_handle wnd; OS::window_creation_flags flags; b32 done; };
+
+        volatile _create_wnd create_wnd{ .wnd = {}, .flags=creation_flags, .done=false };
+
+        //TODO(fran): instead of doing this crazy stuff I could hack it, do a SendMessage to a hidden window we create on startup from the other thread & that lives through the entirety of the program
+
+        ::QueueUserAPC(
+            [](ULONG_PTR args) {
+                _create_wnd* create_wnd = (decltype(create_wnd))args;
+                create_wnd->wnd = OS::Window(create_wnd->flags);
+                create_wnd->done = true;
+            }
+            , state->io_thread, (ULONG_PTR)&create_wnd);
+
+        while(!create_wnd.done){}
+
+        res = *(OS::window_handle*)(&create_wnd.wnd); //removing volatile before being able to copy to a non volatile, this is so dumb
+
+        assert(res);
+
+        return res;
+    }
+
+    internal ui_state* window(OS::window_creation_flags creation_flags)
+    {
+        auto state = get_state();
+        ui_state* res = push_type(&state->arena, ui_state); //TODO(fran): zeroing required?
+        //auto wnd = OS::Window(creation_flags); assert(wnd);
+        auto wnd = _createwindow(creation_flags); assert(wnd);
+
+        AcquireUIState(res, wnd, 0, false); //TODO(fran): we may wanna just return the window handle and allow the user to attach its state later?
+
+        state->windows.active.add(res);
+
+        return res;
+    }
+
+    definition internal ui_state* window_contextmenu()
+    {
+        auto state = get_state();
+        ui_state* res = push_type(&state->arena, ui_state); //TODO(fran): zeroing required?
+        //auto wnd = OS::Window(OS::window_creation_flags::contextmenu); assert(wnd);
+        auto wnd = _createwindow(OS::window_creation_flags::contextmenu); assert(wnd);
+
+        AcquireUIState(res, wnd, 0, true);
+
+        state->windows.active.add(res);//TODO(fran): BUG: should be state->contextmenuwindows
+
+        return res;
+
+        //TODO(fran): I think we can get rid of the is_context_menu special case:
+            //Resizing: we need a sizing_type that can resize its own window based on its childs, may also require of an invisible element that contains all the others
+            //All elements in a context menu should have a on_mouseover action of hiding the next context menu (aka the context_menu pointer), elements that open another subcontext menu simply should first hide the next, then show the new one
+            //The final thing would be to hide all context menus when a click happens (except when the click is in an element that opens another submenu window). This is the hardest one since the click could be outisde of our window
+    }
+
 }
