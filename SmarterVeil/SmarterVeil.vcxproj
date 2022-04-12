@@ -175,7 +175,7 @@
     <ClInclude Include="OS.h" />
     <ClInclude Include="veil.h" />
     <ClInclude Include="veil_ps.h" />
-    <ClInclude Include="veil_ui.h" />
+    <ClInclude Include="iu.h" />
     <ClInclude Include="veil_vs.h" />
     <ClInclude Include="win32_sdk.h" />
     <ClInclude Include="win32_tray.h" />

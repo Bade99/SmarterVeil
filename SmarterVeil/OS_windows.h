@@ -13,6 +13,8 @@
 
 #define WM_CUSTOMSETCURSOR (WM_USER + 4) /*wParam=HCURSOR*/
 
+#define WM_CLOSE_CUSTOM (WM_USER + 5) /*wParam=lParam=unused*/
+
 //NOTE(fran): custom window messages can go from WM_USER(0x0400) up to 0x0FFF, the top 4 bits are needed for other stuff
 
 //NOTE(fran): Windows API calls that need chaging for Dpi aware versions:
@@ -27,6 +29,18 @@
 //NOTE(fran): helpers for the OS itself, should not be used by outside callers
 namespace _OS
 {
+	internal rc2 RECT_to_rc2(RECT r)
+	{
+		rc2 res = { .x = (f32)r.left, .y = (f32)r.top, .w = (f32)RECTW(r), .h = (f32)RECTH(r), };
+		return res;
+	}
+
+	internal RECT rc2_to_RECT(rc2 r)
+	{
+		RECT res = { .left = (i32)r.left, .top = (i32)r.top, .right = (i32)r.right(), .bottom = (i32)r.bottom(), };
+		return res;
+	}
+
 	//NOTE(fran): small memory would be anything that will be generally below the OS's page size
 	internal void* alloc_small_mem(u64 sz)
 	{
@@ -356,10 +370,14 @@ namespace _OS
 			return res;
 		} break;
 		case WM_CLOSE:
-		case WM_DESTROY:
 		{
-			PostQuitMessage(0); //TODO(fran): not all ui windows should be able to completely close the application
+			//NOTE(fran): as always Windows sucks & this msg is piped straight to the wndproc bypassing the msg queue
+			PostMessageW(hWnd, WM_CLOSE_CUSTOM, wParam, lParam); //TODO(fran): we could simply send WM_CLOSE
 		} break;
+		//case WM_DESTROY:
+		//{
+			//PostQuitMessage(0);
+		//} break;
 		case WM_GETTOPMARGIN:
 		{
 			return state->top_margin;
@@ -372,7 +390,7 @@ namespace _OS
 		case WM_DPICHANGED:
 		{
 			//NOTE(fran): Uhh Windows, Windows... why do you do this to yourself?
-			PostMessageW(hWnd, WM_DPICHANGED_CUSTOM, wParam, 0);
+			PostMessageW(hWnd, WM_DPICHANGED_CUSTOM, wParam, lParam);
 
 			//TODO(fran): DefWindowProcW does not seem to do the window resizing for us, wtf? I have to do it manually
 			RECT suggested_window = *(RECT*)lParam;
@@ -386,6 +404,38 @@ namespace _OS
 		} break;
 		}
 		return 0;
+	}
+
+	internal f32 GetScalingForMonitor(HMONITOR monitor) //TODO(fran): OS code
+	{
+		//stolen from: https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_win32.cpp
+		f32 res;
+		UINT xdpi = 96, ydpi = 96;
+
+		local_persistence HMODULE WinSHCore = LoadLibraryW(L"shcore.dll");
+		if (WinSHCore)
+		{
+			typedef HRESULT STDAPICALLTYPE get_dpi_for_monitor(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*); //GetDpiForMonitor
+			local_persistence get_dpi_for_monitor* GetDpiForMonitor = (get_dpi_for_monitor*)GetProcAddress(WinSHCore, "GetDpiForMonitor");
+			if (GetDpiForMonitor)
+			{
+				GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &xdpi, &ydpi);
+				assert(xdpi == ydpi);
+				res = xdpi / 96.0f;
+			}
+			else goto last_resort;
+		}
+		else
+		{
+			//TODO(fran): see if there are better alternatives (specifically for WXP & W7)
+		last_resort:
+			HDC dc = GetDC(HWND_DESKTOP); defer{ ReleaseDC(HWND_DESKTOP, dc); };
+			xdpi = GetDeviceCaps(dc, LOGPIXELSX);
+			ydpi = GetDeviceCaps(dc, LOGPIXELSY);
+			assert(xdpi == ydpi);
+			res = xdpi / 96.0f;
+		}
+		return res;
 	}
 }
 
@@ -730,13 +780,7 @@ namespace OS
 		rc2 res;
 		RECT clientrc; GetClientRect(wnd.hwnd, &clientrc);
 		assert((clientrc.left == 0) && (clientrc.top == 0));
-		res =
-		{
-			.x = (f32)clientrc.left,
-			.y = (f32)clientrc.top,
-			.w = (f32)RECTW(clientrc),
-			.h = (f32)RECTH(clientrc),
-		};
+		res = _OS::RECT_to_rc2(clientrc);
 		return res;
 	}
 
@@ -744,13 +788,20 @@ namespace OS
 	{
 		rc2 res;
 		RECT clientrc; GetWindowRect(wnd.hwnd, &clientrc);
-		res =
-		{
-			.x = (f32)clientrc.left,
-			.y = (f32)clientrc.top,
-			.w = (f32)RECTW(clientrc),
-			.h = (f32)RECTH(clientrc),
-		};
+		res = _OS::RECT_to_rc2(clientrc);
+		return res;
+	}
+
+	//NOTE(fran): returns position & dimensions of the monitor where the mouse is currently at
+	internal rc2 GetMouseMonitorRc()
+	{
+		rc2 res;
+		POINT p; ::GetCursorPos(&p);
+		HMONITOR mon = ::MonitorFromPoint(p, MONITOR_DEFAULTTONEAREST);
+		assert(mon);
+		MONITORINFO mon_nfo{.cbSize=sizeof(mon_nfo)};
+		::GetMonitorInfoA(mon, &mon_nfo);
+		res = _OS::RECT_to_rc2(mon_nfo.rcWork);
 		return res;
 	}
 
@@ -826,5 +877,56 @@ namespace OS
 		//NOTE(fran): the loaded cursor is handled by the OS, we dont need to free it
 		
 		SendMessageW(wnd.hwnd, WM_CUSTOMSETCURSOR, (WPARAM)c, 0);
+	}
+
+	internal f32 GetScalingForWindow(OS::window_handle wnd) //TODO(fran): OS code
+	{
+		f32 res;
+
+		typedef UINT WINAPI get_dpi_for_window(HWND); //GetDpiForWindow
+
+		local_persistence HMODULE WinUser = LoadLibraryW(L"user32.dll");
+		local_persistence get_dpi_for_window* GetDpiForWindow = (get_dpi_for_window*)GetProcAddress(WinUser, "GetDpiForWindow");
+		if (GetDpiForWindow)
+		{
+			res = (f32)GetDpiForWindow(wnd.hwnd) / 96.0f;
+			assert(res); //NOTE(fran): GetDpiForWindow returns 0 for an invalid hwnd
+		}
+		else
+		{
+			HMONITOR monitor = MonitorFromWindow(wnd.hwnd, MONITOR_DEFAULTTONEAREST);
+			res = _OS::GetScalingForMonitor(monitor);
+		}
+		return res;
+	}
+
+	internal f32 GetScalingForSystem()
+	{
+		f32 res;
+		//TODO(fran): GetDpiForSystem, GetSystemDpiForProcess
+		HMONITOR monitor = MonitorFromWindow(HWND_DESKTOP, MONITOR_DEFAULTTOPRIMARY);
+		res = _OS::GetScalingForMonitor(monitor);
+		return res;
+	}
+
+	internal f32 GetScalingForRc(rc2 rc)
+	{
+		f32 res;
+		RECT r = _OS::rc2_to_RECT(rc);
+		HMONITOR monitor = MonitorFromRect(&r, MONITOR_DEFAULTTONEAREST);
+		res = _OS::GetScalingForMonitor(monitor);
+		return res;
+	}
+
+	internal sz2 GetSystemFontMetrics()
+	{
+		//TODO(fran): Docs recommend using SystemParametersInfoA + SPI_GETNONCLIENTMETRICS
+		sz2 res;
+		HFONT font = (HFONT)::GetStockObject(DEFAULT_GUI_FONT);
+		HDC dc = ::GetDC(HWND_DESKTOP); defer{ ::ReleaseDC(HWND_DESKTOP,dc); };
+		TEXTMETRICW tm; ::GetTextMetricsW(dc, &tm);
+		res.w = tm.tmAveCharWidth;
+		res.h = tm.tmHeight;
+		return res;
 	}
 }

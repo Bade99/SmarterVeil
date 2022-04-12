@@ -13,7 +13,7 @@
 #error Unknown Compiler
 #endif
 
-#include <filesystem>
+#include <filesystem> //directory_iterator
 
 #if defined(_DEBUG)
 //Internal build, meant only for developers
@@ -136,9 +136,6 @@ template<typename F> Defer<F> operator+(defer_dummy, F && f) { return makeDefer<
 #include "basic_timing.h"
 #include "lang.h"
 #include "veil.h"
-
-//#define APPEND_HWND_TO_MSG //TODO(fran): doesnt work, PostThreadMessage doesnt allow for messages that use the top 2bytes. I hate you Windows. At this point it'd be simpler to just create my own message queue
-
 
 LRESULT CALLBACK VeilProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) //TODO(fran): it's pointless to have this, anything that's here should be moved to the ui code
 {
@@ -286,13 +283,7 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
             //case WM_HOTKEY: //NOTE(fran): it is sent straight to the other thread by Windows
             {
                 post:
-                auto message = msg.message;
-                #ifdef APPEND_HWND_TO_MSG
-                assert((msg.message & 0xffff0000) == 0);
-                message = (msg.message & 0xffff) | (((size_t)msg.hwnd & 0xffff) << 16); /*message+hwnd*/
-                //Reference on the bits of the message: https://docs.microsoft.com/en-us/windows/win32/winmsg/wm-app
-                #endif //TODO(fran): since this doesnt work lets do something else, we'll just use 3 or 4bits from the top region we are allowed to use, and use them as an index into an hwnd table that contains all the hwnds that are created from this thread but handled in the other
-                auto ret = PostThreadMessageW(ProcessAndRenderThreadID, message, msg.wParam, msg.lParam);
+                auto ret = PostThreadMessageW(ProcessAndRenderThreadID, msg.message, msg.wParam, msg.lParam);
                 if (do_continue) { do_continue = false; continue; }
             } break;
             /* TODO(fran): it may be a good idea to send ncmousemove as mousemove too to the ui, to handle cases where the mouse goes from the client area to the nonclient

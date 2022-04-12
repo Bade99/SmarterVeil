@@ -29,14 +29,13 @@ internal HRESULT As(Origin * o, Dest * d)
 
 #include "veil_vs.h" // veil_vs_bytecode
 #include "veil_ps.h" // veil_ps_bytecode
-#include "veil_ui.h"
+#include "iu.h"
 
 #pragma comment(lib, "d3d11")
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "dcomp")
 #pragma comment (lib, "dxguid") // IID_ID3D11Texture2D
 #pragma comment (lib, "winmm") // timeapi.h
-
 
 struct veil_start_data {
     OS::window_handle veil_wnd;
@@ -84,6 +83,23 @@ struct windows_compositor {
     IDCompositionVisual* visual;
 };
 
+struct veil_ui_state /* : ui_state */ {
+    ui_state* _ui; //TODO(fran): try to integrate this again inside veil_ui_state like we did with inheritance
+
+    b32 quit;
+
+    f32 threshold;
+    //f32 brightness;
+    struct {
+        f32 threshold_min;
+        f32 threshold_max;
+    };
+
+    b32 show_veil;
+
+    OS::hotkey_data show_ui_hotkey;
+};
+
 struct veil_state {
     OS::window_handle wnd;
     
@@ -93,244 +109,8 @@ struct veil_state {
 
     u32 locking_wait_ms;
 
-    //TODO(fran): acquire & release
-    //language_manager LanguageManager;
-    //
     veil_ui_state ui;
-
 };
-#if 0
-internal void GetInput(ui_state* ui, MSG msg)
-{
-    user_input& ui_input = ui->input;
-    //TODO(fran): msg.hwnd is null when clicking inside the client area of the window, we cant know which window is being addressed if we had multiple ones (all this because PostThreadMessageW doesnt let you pass the hwnd, is there a way to pass it?)
-                //if (msg.hwnd == Veil->ui.wnd) { //Check for interesting messages to the UI
-
-    //IMPORTANT TODO(fran): now we have hwnds created on both threads we'd need to copy the extra handling that we have on specific messages on the main thread, eg SetCapture(),...
-    switch (msg.message)
-    {
-    case WM_DPICHANGED_CUSTOM:
-    {
-        ui->scaling = (f32)LOWORD(msg.wParam) / 96.f /*aka USER_DEFAULT_SCREEN_DPI */;
-        assert(LOWORD(msg.wParam) == HIWORD(msg.wParam));
-        //RECT suggested_window = *(RECT*)msg.lParam;
-        //MovWindow(Veil->wnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
-    } break;
-    case WM_MOUSEMOVE:
-    {
-        POINT p{ GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam) };
-        POINT screenP = p;
-        MapWindowPoints(ui->wnd.hwnd, HWND_DESKTOP, &screenP, 1);
-
-        ui_input.mouseP = v2_from(p.x, p.y);
-
-        ui_input.screen_mouseP = v2_from(screenP.x, screenP.y);
-    } break;
-    case WM_LBUTTONDOWN:
-    {
-        ui_input.keys[input_key::left_mouse] = input_key_state::clicked;
-    } break;
-    case WM_LBUTTONUP:
-    {
-        ui_input.keys[input_key::left_mouse] = input_key_state::unclicked;
-    } break;
-    case WM_LBUTTONDBLCLK:
-    {
-        ui_input.keys[input_key::left_mouse] = input_key_state::doubleclicked;
-    } break;
-    case WM_RBUTTONDOWN:
-    {
-        ui_input.keys[input_key::right_mouse] = input_key_state::clicked;
-    } break;
-    case WM_RBUTTONUP:
-    {
-        ui_input.keys[input_key::right_mouse] = input_key_state::unclicked;
-    } break;
-    case WM_RBUTTONDBLCLK:
-    {
-        ui_input.keys[input_key::right_mouse] = input_key_state::doubleclicked;
-    } break;
-    case WM_SYSKEYDOWN:
-    case WM_KEYDOWN:
-    {
-        b32 ctrl_is_down = HIBYTE(GetKeyState(VK_CONTROL));
-        b32 alt_is_down = HIBYTE(GetKeyState(VK_MENU));
-        b32 shift_is_down = HIBYTE(GetKeyState(VK_SHIFT));
-
-        u8 vk = (u8)msg.wParam;
-
-        //TODO(fran): keyboard keys should also have clicked, pressed and unclicked states
-
-        switch (vk) {
-        case VK_LWIN: case VK_RWIN:
-        case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
-        case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
-        case VK_MENU:
-        case VK_F12:
-        {
-            ui_input.hotkey.vk = (u8)0;
-            ui_input.hotkey.translation_nfo = 0;
-        } break;
-        default:
-        {
-            ui_input.hotkey.vk = (u8)vk;
-            ui_input.hotkey.translation_nfo = msg.lParam;
-        } break;
-        }
-        ui_input.hotkey.mods = (ctrl_is_down ? MOD_CONTROL : 0) | (alt_is_down ? MOD_ALT : 0) | (shift_is_down ? MOD_SHIFT : 0);
-    } break;
-    case WM_HOTKEY: //NOTE(fran): system-wide global hotkey
-    {
-        i32 id = msg.wParam;
-        u16 mods = LOWORD(msg.lParam);
-        u8 vk = HIWORD(msg.lParam);
-        ui_input.global_hotkey_id = id;
-    } break;
-    case WM_MOUSEWHEEL:
-    {
-        //TODO(fran): we can also use the wParam to get the state of Ctrl, Shift, Mouse Click & others
-        f32 zDelta = (f32)GET_WHEEL_DELTA_WPARAM(msg.wParam) / (f32)WHEEL_DELTA;
-        //NOTE(fran): zDelta indicates the number of units to scroll (the unit will be determined by whoever handles the scroll)
-        ui_input.mouseVScroll = zDelta;
-    } break;
-    case WM_TRAY:
-    {
-        switch (LOWORD(msg.lParam))
-        {
-            //NOTE(fran): for some reason the tray only sends WM_LBUTTONDOWN once the mouse has been released, so here WM_LBUTTONDOWN counts as WM_LBUTTONUP, same for right click
-        case WM_LBUTTONDOWN:
-        {
-            ui_input.tray.on_unclick = true;
-        } break;
-        case WM_RBUTTONDOWN:
-        {
-            ui_input.tray.on_unrclick = true;
-        } break;
-        }
-    } break;
-    }
-    //}
-}
-#endif
-
-#if 0
-internal void PreAdjustInput(user_input* ui_input)
-{
-    ui_input->hotkey = { 0 };
-    ui_input->global_hotkey_id = 0;//TODO(fran): we could also send the full info, id+vk+mods
-    ui_input->mouseVScroll = 0;
-
-    for (i32 i = 0; i < ArrayCount(ui_input->keys); i++)
-        if (ui_input->keys[i] == input_key_state::clicked || ui_input->keys[i] == input_key_state::doubleclicked)
-            ui_input->keys[i] = input_key_state::pressed;
-
-    //IMPORTANT NOTE(fran): We'll use Windows style right click handling, where it does not care about anything but the element that was under the mouse when the unrclick event happens. This means we wont have an interacting_with element and therefore we need to manually reset the key state in order to avoid infinite key repeats
-        //TODO(fran): this may need to be specialized for different OSs inside veil_ui
-    if (ui_input->keys[input_key::right_mouse] == input_key_state::unclicked)
-        ui_input->keys[input_key::right_mouse] = {};
-
-    ui_input->tray.on_unclick = false;
-    ui_input->tray.on_unrclick = false;
-}
-#endif
-
-internal void AdjustMouse(ui_state* ui)
-{
-    //TODO(fran): OS code, also this is kind of a HACK
-        //had an idea: we could SetCapture() on mouseover too, apart from doing it on click, problem would be that I doubt other apps do that and we'd end up capturing the mouse when other apps wont expect it
-    POINT p;
-    if (GetCursorPos(&p))
-    {
-        if(ui->wnd.hwnd != WindowFromPoint(p)) //TODO(fran): we can remove the 'else' case if we can get this to return true only if the point is inside the _client_ area of the window
-        {
-#ifdef DEBUG_BUILD
-            ui->input.mouseP = ui->input.screen_mouseP = { -1, -1 }; //NOTE(fran): for ease of debugging
-#else
-            ui->input.mouseP = ui->input.screen_mouseP = { F32MIN, F32MIN };
-#endif
-        }
-        else
-        {
-            //update the window's cursor pos
-            POINT screenP = p;
-            MapWindowPoints(HWND_DESKTOP, ui->wnd.hwnd, &p, 1);
-            ui->input.mouseP = v2_from(p.x, p.y);
-            ui->input.screen_mouseP = v2_from(screenP.x, screenP.y);
-        }
-    }
-}
-
-#if 0
-internal void ProcessMessages(veil_state* Veil)
-{
-    TIMEDFUNCTION();
-    MSG msg;
-    //IMPORTANT(fran): PeekMessageW _needs_ to be called with an HWND parameter of 0 in order to receive both window messages (eg WM_SIZE, ...) and _thread_ messages (eg WM_QUIT! which otherwise is only sometimes received if using a specific hwnd value for PeekMessageW)
-    //INFO(fran): it may in the future be important to know that apparently (saythe docs) PeekMessageW does not remove WM_PAINT messages, the only way those are removed is by doing painting on the wndproc, that could mean that if we stopped answering to WM_PAINT our message queue would become crowded with old WM_PAINT messages
-
-    PreAdjustInput(&Veil->ui.input);
-    if (Veil->ui.context_menu) PreAdjustInput(&Veil->ui.context_menu->input);
-
-    v2 lastmousep[] = { Veil->ui.input.mouseP, Veil->ui.context_menu ? Veil->ui.context_menu->input.mouseP : v2{-1.f,-1.f} };
-
-    //TODO(fran): while resizing the window with the mouse we enter WM_NCLBUTTONDOWN and seem to be getting hooked from someone else who 'handles' the sizing effect by stretching our window, this is probably some Directx thing I need to set up correctly, we need to get rid of this, otherwise real resizing doesnt occur until the user releases the mouse
-        //TODO(fran): messages are going straight to the wndproc, bypassing this
-    while (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE))
-    {
-        //auto _msgName = msgToString(msg.message); OutputDebugStringA(_msgName); OutputDebugStringA("\n");
-
-        //TODO(fran): handle WM_ENDSESSION?
-        
-        //TODO(fran): handle multi-ui-windows / client-vs-nonclient mouse movements, the old window needs to be re-renderer & possibly have to mouse moved to infinity so any element that was on mouseover can go back to the normal state
-
-#ifdef APPEND_HWND_TO_MSG
-        if ((msg.hwnd == 0) && ((msg.message & 0xffff0000) != 0))
-        {
-            u16 halfhwnd = msg.message >> 16;
-
-            u16 veiluihalfhwnd = (size_t)Veil->ui.wnd & 0xffff;
-
-            if (veiluihalfhwnd == halfhwnd) msg.hwnd = Veil->ui.wnd;
-
-            msg.message &= 0xffff;
-        }
-#endif
-
-        switch (msg.message)
-        {
-            case WM_QUIT:
-            {
-                Veil->ui.quit = true;
-            } break;
-            //NOTE(fran): no WM_DISPLAYCHANGE msg is sent when the _refresh rate_ is changed
-            default:
-            {
-                ui_state* ui = !msg.hwnd ? &Veil->ui : Veil->ui.context_menu;
-                GetInput(ui, msg);
-
-                TranslateMessage(&msg); //TODO(fran): are this two doing anything?
-                //if (msg.message == WM_DPICHANGED) DebugBreak();
-                if(msg.hwnd)
-                    DispatchMessageW(&msg);//send msg to wndproc
-            } break;
-        }
-    }
-
-    //TODO(fran): first of all this is still a pretty big HACK, also one edge case is still not covered, mouse moving from the titlebar to the top resize border and then back to the title bar, the mouse style will not update to the arrow and instead remain as the up-down resize because we never left the titlebar and therefore we dont get a trigger to update the mouse style
-    if (lastmousep[0] == Veil->ui.input.mouseP && (Veil->ui.interacting_with == nil))
-        AdjustMouse(&Veil->ui);
-    if (Veil->ui.context_menu && lastmousep[1] == Veil->ui.context_menu->input.mouseP && (Veil->ui.context_menu->interacting_with == nil))
-        AdjustMouse(Veil->ui.context_menu);
-
-    //TODO(fran): one frame initialization for global ui things
-    //Temporary Arena initialization
-    ui_state* ui = &Veil->ui;
-    initialize_arena(&ui->LanguageManager->temp_string_arena, ui->LanguageManager->_temp_string_arena, sizeof(ui->LanguageManager->_temp_string_arena));
-
-    UIProcessing(&Veil->ui);
-    if(Veil->ui.context_menu) UIProcessing(Veil->ui.context_menu);
-}
-#endif
 
 internal d3d11_renderer AcquireD3D11Renderer(HWND wnd)
 {
@@ -530,6 +310,296 @@ internal void ReleaseWindowsCompositor(windows_compositor* compositor)
     //TODO(fran): do I need to remove something prior to releasing?
 }
 
+internal void CreateVeilUIElements(veil_ui_state* veil_ui)
+{
+    button_theme base_button_theme =
+    {
+        .color =
+        {
+            .foreground =
+            {
+                .normal = {1.f,1.0f,1.0f,1.0f},
+                .disabled = {0.2f,0.2f,0.2f,1.0f},
+                .mouseover = {0.9f,0.9f,0.9f,1.0f},
+                .pressed = {0.8f,0.8f,0.8f,1.0f},
+            },
+            .background =
+            {
+                .normal = {0.0f,0.6f,0.8f,1.0f},
+                .disabled = {.0f,.2f,.0f,1.0f},
+                .mouseover = V4(base_button_theme.color.background.normal.xyz * .95f,1.0f),
+                .pressed = V4(base_button_theme.color.background.mouseover.xyz * .95f,1.0f),
+            },
+            .border = base_button_theme.color.background,
+        },
+        .dimension =
+        {
+            .border_thickness = 0,
+        },
+        .style = ui_style::round_rect,
+        .font = 0,
+    };
+
+    slider_theme base_slider_theme =
+    {
+        .color =
+        {
+            .track_fill =
+            {
+                .normal = {0.8f,0.8f,0.8f,1.f},
+                //.mouseover = {0.85f,0.85f,0.85f,1.f},
+                .mouseover = base_slider_theme.color.track_fill.normal,
+                .pressed = base_slider_theme.color.track_fill.mouseover,
+            },
+            .track_empty =
+            {
+                .normal = {0.3f,0.3f,0.3f,1.f},
+                //.mouseover = {0.35f,0.35f,0.35f,1.f},
+                .mouseover = base_slider_theme.color.track_empty.normal,
+                .pressed = base_slider_theme.color.track_empty.mouseover,
+            },
+            .thumb =
+            {
+                .normal = {0.6f,0.6f,0.6f,1.f},
+                .mouseover = {0.65f,0.65f,0.65f,1.f},
+                .pressed = base_slider_theme.color.thumb.mouseover,
+            },
+        },
+        .dimension =
+        {
+            .track_thickness = .3f,
+            .thumb_thickness = .7f,
+        },
+        .thumb_style = ui_style::circle,
+        .track_style = ui_style::round_rect,
+    };
+
+    hotkey_theme base_hotkey_theme =
+    {
+        .color =
+        {
+            .foreground_placeholder =
+            {
+                .normal = {1.f,1.0f,1.0f,1.0f},
+                .disabled = {0.2f,0.2f,0.2f,1.0f},
+                .mouseover = {0.9f,0.9f,0.9f,1.0f},
+                .pressed = {0.8f,0.8f,0.8f,1.0f},
+            },
+            .foreground_validhk =
+            {
+                .normal = {0.0f,1.0f,0.0f,1.0f},
+                .disabled = {0.0f,0.2f,0.0f,1.0f},
+                .mouseover = {0.0f,0.9f,0.0f,1.0f},
+                .pressed = {0.0f,0.8f,0.0f,1.0f},
+            },
+            .foreground_invalidhk =
+            {
+                .normal = {1.f,0.0f,0.0f,1.0f},
+                .disabled = {0.2f,0.0f,0.0f,1.0f},
+                .mouseover = {0.9f,0.0f,0.0f,1.0f},
+                .pressed = {0.8f,0.0f,0.0f,1.0f},
+            },
+            .background =
+            {
+                .normal = {0.3f,0.3f,0.25f,1.0f},
+                .disabled = {0.2f,0.2f,0.2f,1.0f},
+                .mouseover = {0.3f,.3f,.25f,1.0f},
+                .pressed = {.3f,.3f,.3f,1.0f},
+            },
+            .border = base_hotkey_theme.color.background,
+        },
+        .dimension =
+        {
+            .border_thickness = 0,
+        },
+        .style = ui_style::round_rect,
+        .font = 0,
+    };
+    background_theme bk_theme =
+    {
+        .color =
+        {
+            .background =
+            {
+                .normal = {0.4f,0.4f,0.4f,1.0f},
+                .mouseover = bk_theme.color.background.normal,
+                .pressed = bk_theme.color.background.normal,
+                .inactive = {0.35f,0.35f,0.4f,1.0f},
+            },
+            .border = bk_theme.color.background,
+        },
+        .dimension =
+        {
+            .border_thickness = 0,
+        },
+        .style = ui_style::rect,
+    };
+
+    element_sizing_desc base_button_w_sizing =
+    {
+        .type = element_sizing_type::font,
+        .font = {.w_extra_chars = 2},
+    };
+
+    element_sizing_desc vertical_trio_sizing =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = (1.f / 3.f)},
+    };
+
+    element_sizing_desc empty_pad_sizing =
+    {
+        .type = element_sizing_type::font,
+        .font = {0},
+    };
+
+    element_sizing_desc remaining_sizing =
+    {
+        .type = element_sizing_type::remaining,
+    };
+
+    element_sizing_desc hotkey_sizing =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = .7f},
+    };
+    element_sizing_desc full_bounds_sizing =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = 1.f},
+    };
+    element_sizing_desc threequarters_bounds_sz =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = .9f},
+    };
+
+    memory_arena* arena = &veil_ui->_ui->permanent_arena;
+
+    element_sizing_desc TEST_button_w_sizing =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = .35f},
+    };
+    element_sizing_desc TEST_filler_pad =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = .1f},
+    };
+
+    element_sizing_desc TEST_full_slider =
+    {
+        .type = element_sizing_type::bounds,
+        .bounds = {.scale_factor = .9f},
+    };
+
+    //TODO(fran): maintain aspect ratio between vertical_constraint_sz sizer & horizontal_constraint_sz sizer for any size of the window? (may be a little too much, and probably not really necessary)
+    element_sizing_desc vertical_constraint_sz =
+    {
+        .type = element_sizing_type::font_clamp_to_bounds,
+        //.bounds = {.scale_factor = 1.f},
+        .font = {.v_scale_factor = 11},
+    };
+
+    element_sizing_desc horizontal_constraint_sz =
+    {
+        .type = element_sizing_type::font_clamp_to_bounds,
+        //.bounds = {.scale_factor = 1.f},
+        .font = {.w_extra_chars = 75},
+    };
+
+    ui_string on_off_text =
+    {
+        .type = ui_string_type::dynamic_id,
+        .str_dyn_id = {
+            .context = &veil_ui->show_veil,
+            .get_str_id = UI_STRING_DYN_ID_LAMBDA{
+                b32 * show_veil = (decltype(show_veil))context;
+                return 50u + *show_veil;
+            },
+        },
+    };
+
+    ui_cursor Hand = { .type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
+    ui_cursor Text = { .type = ui_cursor_type::os, .os_cursor = OS::cursor_style::text };
+
+    ui_element* layout = VSizer(arena, sizer_alignment::top,
+        { .sizing = full_bounds_sizing, .element = HSizer(arena, sizer_alignment::left,
+            {.sizing = full_bounds_sizing, .element = Background(.arena = arena, .theme = &bk_theme,
+                .child = VSizer(arena, sizer_alignment::center,
+                    {.sizing = vertical_constraint_sz, .element = HSizer(arena, sizer_alignment::center,
+                        {.sizing = horizontal_constraint_sz, .element = VSizer(arena, sizer_alignment::top,
+                            {.sizing = vertical_trio_sizing, .element = /*top third*/ HSizer(arena, sizer_alignment::center,
+                                {.sizing = TEST_full_slider, .element = Slider(.arena = arena, .theme = &base_slider_theme, .value = {&veil_ui->threshold,veil_ui->threshold_min,veil_ui->threshold_max})}
+                            )},
+                            {.sizing = vertical_trio_sizing, .element = /*mid_third*/ HSizer(arena, sizer_alignment::right,
+                                {.sizing = TEST_button_w_sizing, .element = VSizer(arena, sizer_alignment::top, {.sizing = threequarters_bounds_sz, .element = Button(.arena = arena, .theme = &base_button_theme, .text = on_off_text, .cursor = Hand, .on_unclick = {.context = &veil_ui->show_veil, .action = common_ui_actions::B32_Flip})})},
+                                {.sizing = TEST_filler_pad, .element = HPad(arena)}
+                            )},
+                            {.sizing = vertical_trio_sizing, .element = /*bot_third*/ HSizer(arena, sizer_alignment::center,
+                                {.sizing = hotkey_sizing, .element = VSizer(arena, sizer_alignment::center, {.sizing = threequarters_bounds_sz, .element = Hotkey(.arena = arena, .theme = &base_hotkey_theme, .hotkey_value = &veil_ui->show_ui_hotkey,.placeholder_text = {.type = ui_string_type::id, .str_id = 52u }, .cursor = Text, .on_hotkey = {.context = veil_ui->_ui, .action = common_ui_actions::MinimizeOrRestore})})}
+                            )}
+                        )}
+                    )}
+                )
+            )}
+        ) }
+    );
+
+    CreateOSUIElements(veil_ui->_ui, &veil_ui->quit, layout);
+}
+
+void CreateVeilUITray(veil_ui_state* veil_ui)
+{
+    ui_action on_unclick = { .context = &veil_ui->show_veil, .action = common_ui_actions::B32_Flip };
+    ui_action on_unrclick = { .context = veil_ui->_ui, .action = common_ui_actions::MinimizeOrRestore };
+    AcquireTrayIcon(veil_ui->_ui, on_unclick, on_unrclick);
+}
+
+internal void AcquireVeilUIState(veil_ui_state* res, ui_state* veil_ui_base_state)
+{
+    res->_ui = veil_ui_base_state;
+
+    //TODO(fran): retrieve settings from save file, metaprogramming
+    res->threshold = .5f;//TODO(fran): what if the user only changed the threshold?
+
+    res->threshold_min = 0.1f;
+    res->threshold_max = 1.0f;
+
+    //res->brightness = .6f;
+
+    res->quit = false;
+
+    res->show_veil = true;
+
+    res->show_ui_hotkey = { 0 };
+
+    rc2 desktop_rc = OS::GetMouseMonitorRc();
+    
+    f32 units = 28.f;
+    //f32 _units_to_pixels = GetSystemMetrics(SM_CXMENUCHECK);
+    f32 units_to_pixels = OS::GetSystemFontMetrics().h * OS::GetScalingForRc(desktop_rc) / OS::GetScalingForSystem();
+    i32 wnd_w = units_to_pixels * units;
+    i32 wnd_h = wnd_w * 9.5f / 16.f;
+
+    rc2 wnd_rc = get_centered_rc(desktop_rc, wnd_w, wnd_h);
+
+#ifdef DEBUG_BUILD
+    wnd_rc.x -= (distance(wnd_rc.x, desktop_rc.x) - 100);
+#endif
+
+    OS::MoveWindow(res->_ui->wnd, wnd_rc);
+    OS::ShowWindow(res->_ui->wnd);
+
+    CreateVeilUIElements(res);
+
+    CreateVeilUITray(res);
+}
+
+internal void ReleaseVeilUIState(veil_ui_state* veil_ui) {
+    ReleaseTrayIcon(&veil_ui->_ui->tray);
+}
+
 internal void OutputToWindowsCompositor(veil_state* Veil) 
 {
     // Make the swap chain available to the composition engine
@@ -642,7 +712,6 @@ internal void RendererDraw(veil_state* Veil, ID3D11Texture2D* new_desktop_textur
     }
 }
 
-#if 1
 internal void VeilProcessing(veil_start_data* start_data)
 {
     veil_state* Veil = (decltype(Veil))alloca(sizeof(*Veil)); zero_struct(*Veil);
@@ -735,87 +804,3 @@ internal void VeilProcessing(veil_start_data* start_data)
 
     }
 }
-#else
-internal void VeilProcessing(veil_start_data* start_data)
-{
-    veil_state* Veil = (decltype(Veil))alloca(sizeof(*Veil)); zero_struct(*Veil);
-    Veil->wnd = start_data->veil_wnd;
-    AcquireVeilUIState(&Veil->ui, start_data->veil_ui_wnd, start_data->main_thread_id); defer{ ReleaseVeilUIState(&Veil->ui); };
-    Veil->renderer = AcquireD3D11Renderer(start_data->veil_wnd.hwnd /*TODO(fran): OS agnostic*/); defer{ReleaseD3D11Renderer(&Veil->renderer);};
-    Veil->desktop_duplication = AcquireD3D11DesktopDuplication(&Veil->renderer); defer{ ReleaseD3D11DesktopDuplication(&Veil->desktop_duplication); };
-    Veil->compositor = AcquireWindowsCompositor(Veil); defer{ ReleaseWindowsCompositor(&Veil->compositor); };
-    Veil->locking_wait_ms = (u32)(1000.f/(f32)OS::GetRefreshRateHz(Veil->wnd)); //TODO(fran): maybe v-sync is a better option?
-    //TODO(fran): handle refresh rate changes, probably from D3D since the wndproc doesnt seem to get any special notification about it
-
-    f64 IgnoreUpdateTimer = 0;//ms
-    bool IgnoreUpdate = false;
-
-    //INFO(fran): 
-    //Conclusions on the gpu spikes when hiding the veil:
-    // + TODO(fran): For starters having multiple d3d devices presenting means that we are stalling execution until the next frame before we would want to, when the ui presents it stalls, then we continue to the veil, which presents too and stalls again. This ends up causing the veil to be off by a couple of frames which is very noticeable and terrible, in sharp contrast with when the veil is on its own, in which case it is unnoticeable (TODO(fran): now I cant replicate it, and both cases look similar :c). Should we have a different thread for each d3d presentation device?
-
-    u32 desired_scheduler_ms = 1;
-    TIMECAPS timecap;
-    if (timeGetDevCaps(&timecap, sizeof(timecap)) == MMSYSERR_NOERROR)
-        desired_scheduler_ms = maximum(desired_scheduler_ms, timecap.wPeriodMin);
-    //TODO(fran): if we really wanted to we can spinlock if our desired ms is not met
-    timeBeginPeriod(desired_scheduler_ms); defer{ timeEndPeriod(desired_scheduler_ms); };
-    //TODO(fran): from what I understand, older systems would require calls to timeBeginPeriod and timeEndPeriod each time we use Sleep/other timers, because originally it was a system global thing
-
-    while (!Veil->ui.quit) 
-    {
-        TIMEDBLOCK(MainLoop);
-        TIMERSTART(complete_cycle_elapsed);
-
-        auto old_show_veil = Veil->ui.show_veil;
-        
-        ProcessMessages(Veil);
-        //SUPER TODO(fran): I have no clue why when the veil is hidden "ProcessMessages(Veil)" spikes GPU usage like crazy, to 50% if it's just hidden, and 20% if it's hidden and we check "if (Veil->ui.show_veil)" before doing render & update to compositor
-        
-        if (old_show_veil != Veil->ui.show_veil)
-        {
-            if (Veil->ui.show_veil) OS::ShowWindow(Veil->wnd);
-            else OS::HideWindow(Veil->wnd);
-            //Make sure the ui remains on top of the veil
-            if (Veil->ui.show_veil && OS::IsWindowVisible(Veil->ui.wnd)/*not minimized*/)
-                OS::SendWindowToTop(Veil->ui.wnd);
-        }
-        //TODO(fran): when re-showing the veil it's topmost state is updated and sent to the top, which causes the veil ui to be occluded
-
-        //TODO(fran): reassert that the window is still topmost, it often happens that any random new app that opens does so on top of our window. Also see what we can do about fullscreen windows that instantly minimize when another window is clicked, maybe our trying to go topmost will minimize it?
-
-        //TODO(fran): while desktop duplication is active the computer cannot go to sleep, find a way to detect sleep requests and disable duplication
-
-        //TODO(fran): handle rotated desktops
-
-        //TODO(fran): once I turn off my screen the veil will keep failing to get the next desktop img when the screen turns back on
-
-        if (Veil->ui.show_veil) //TODO(fran): true veil processing stop, possibly requiring to release all desktop duplication objects, I dont want to simply stop calling GetNewDesktopImage because Windows will still store more update regions, idk how much extra memory that will entail (TODO(fran): check that), also (embarrassingly) we are using it as our frame timer
-        {
-            TIMEDBLOCK(VeilOutputToCompositor);
-
-            ID3D11Texture2D* new_desktop_texture = GetNewDesktopImage(&Veil->desktop_duplication, Veil->locking_wait_ms);
-            defer{ d3d_SafeRelease(new_desktop_texture); };
-
-            IgnoreUpdate = IgnoreUpdateTimer > 5000.f;
-            if (IgnoreUpdate) IgnoreUpdateTimer = 0;
-            //TODO(fran): ROBUSTNESS: check that the time between updates was short (eg <100ms) before deciding to ignore, do not ignore a new frame if the previous one came much earlier cause it'd be much more probable that we werent the ones who caused it
-
-            if (new_desktop_texture && !IgnoreUpdate)
-            {
-                //RECT wndRc; GetClientRect(Veil->wnd, &wndRc);
-                rc2 wnd_rc = OS::GetWindowRenderRc(Veil->wnd);
-
-                RendererDraw(Veil, new_desktop_texture, wnd_rc.w, wnd_rc.h);
-                OutputToWindowsCompositor(Veil);
-            }
-        }
-        auto dt = TIMEREND(complete_cycle_elapsed);
-        IgnoreUpdateTimer += dt;
-
-        if (!Veil->ui.show_veil && !Veil->ui.render_and_update_screen && dt < (f32)Veil->locking_wait_ms)
-            Sleep(Veil->locking_wait_ms - (u32)dt);
-
-    }
-}
-#endif

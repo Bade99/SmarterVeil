@@ -42,7 +42,7 @@
     <ClInclude Include="basic_math.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="veil_ui.h">
+    <ClInclude Include="iu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="basic_string.h">
