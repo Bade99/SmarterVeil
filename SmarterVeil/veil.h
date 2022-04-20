@@ -25,7 +25,6 @@ internal HRESULT As(Origin * o, Dest * d)
 //#include <d3d11_2.h>
 #include <dxgi1_3.h> // version 1.3 is needed for DXGI_CREATE_FACTORY_DEBUG
 #include <dcomp.h>
-#include <timeapi.h> //TIMECAPS, timeBeginPeriod
 
 #include "veil_vs.h" // veil_vs_bytecode
 #include "veil_ps.h" // veil_ps_bytecode
@@ -35,7 +34,6 @@ internal HRESULT As(Origin * o, Dest * d)
 #pragma comment(lib, "dxgi")
 #pragma comment(lib, "dcomp")
 #pragma comment (lib, "dxguid") // IID_ID3D11Texture2D
-#pragma comment (lib, "winmm") // timeapi.h
 
 struct veil_start_data {
     OS::window_handle veil_wnd;
@@ -312,6 +310,7 @@ internal void ReleaseWindowsCompositor(windows_compositor* compositor)
 
 internal void CreateVeilUIElements(veil_ui_state* veil_ui)
 {
+    TIMEDFUNCTION();
     button_theme base_button_theme =
     {
         .color =
@@ -592,7 +591,7 @@ internal void AcquireVeilUIState(veil_ui_state* res, ui_state* veil_ui_base_stat
     OS::ShowWindow(res->_ui->wnd);
 
     CreateVeilUIElements(res);
-
+    
     CreateVeilUITray(res);
 }
 
@@ -729,15 +728,7 @@ internal void VeilProcessing(veil_start_data* start_data)
 
     //INFO(fran): 
     //Conclusions on the gpu spikes when hiding the veil:
-    // + TODO(fran): For starters having multiple d3d devices presenting means that we are stalling execution until the next frame before we would want to, when the ui presents it stalls, then we continue to the veil, which presents too and stalls again. This ends up causing the veil to be off by a couple of frames which is very noticeable and terrible, in sharp contrast with when the veil is on its own, in which case it is unnoticeable (TODO(fran): now I cant replicate it, and both cases look similar :c). Should we have a different thread for each d3d presentation device?
-
-    u32 desired_scheduler_ms = 1;
-    TIMECAPS timecap;
-    if (timeGetDevCaps(&timecap, sizeof(timecap)) == MMSYSERR_NOERROR)
-        desired_scheduler_ms = maximum(desired_scheduler_ms, timecap.wPeriodMin);
-    //TODO(fran): if we really wanted to we can spinlock if our desired ms is not met
-    timeBeginPeriod(desired_scheduler_ms); defer{ timeEndPeriod(desired_scheduler_ms); };
-    //TODO(fran): from what I understand, older systems would require calls to timeBeginPeriod and timeEndPeriod each time we use Sleep/other timers, because originally it was a system global thing
+    // + TODO(fran): For starters having multiple d3d devices presenting means that we are stalling execution until the next frame before we would want to, when the ui presents it stalls, then we continue to the veil, which presents too and stalls again. This ends up causing the veil to be off by a couple of frames which is very noticeable and terrible, in sharp contrast with when the veil is on its own, in which case it is unnoticeable. Should we have a different thread for each d3d presentation device?
 
     while (!Veil->ui.quit)
     {
@@ -801,6 +792,7 @@ internal void VeilProcessing(veil_start_data* start_data)
 
         if (!Veil->ui.show_veil && !Veil->ui._ui->render_and_update_screen /*TODO(fran): HACK: find out how to sync everything correctly*/ && dt < (f32)Veil->locking_wait_ms)
             Sleep(Veil->locking_wait_ms - (u32)dt);
+        //TODO(fran): if we really wanted to, after the sleep we can spinlock if our desired ms is not met
 
     }
 }

@@ -4,6 +4,9 @@
 #include "resource.h"
 #include <shlobj_core.h> // SHGetKnownFolderPath
 #include <shellapi.h> // NOTIFYICONDATA (everything related to the tray icon)
+#include <timeapi.h> //TIMECAPS, timeBeginPeriod
+
+#pragma comment (lib, "winmm") // timeapi.h
 
 #define WM_GETTOPMARGIN (WM_USER+1)
 
@@ -466,7 +469,8 @@ namespace OS
 	struct _work_folder {
 		s8 dir_str;
 
-		_work_folder() {
+		_work_folder() 
+		{
 			dir_str = _OS::get_work_folder();
 
 			s16 work_dir16 = _OS::convert_to_s16(dir_str); defer{ _OS::free_small_mem(work_dir16.chars); };
@@ -478,6 +482,26 @@ namespace OS
 		~_work_folder() { _OS::free_small_mem(dir_str.chars); };
 	}global_persistence work_folder;
 
+	struct _set_sleep_resolution {
+		u32 desired_scheduler_ms = 1;
+		
+		_set_sleep_resolution()
+		{
+			TIMECAPS timecap;
+			if (timeGetDevCaps(&timecap, sizeof(timecap)) == MMSYSERR_NOERROR)
+				this->desired_scheduler_ms = maximum(this->desired_scheduler_ms, timecap.wPeriodMin);
+			//TODO(fran): if we really wanted to we can spinlock if our desired ms is not met
+			auto ret = timeBeginPeriod(this->desired_scheduler_ms);
+			assert(ret == TIMERR_NOERROR);
+		}
+
+		~_set_sleep_resolution()
+		{
+			auto ret = timeEndPeriod(this->desired_scheduler_ms);
+			assert(ret == TIMERR_NOERROR);
+		}
+
+	}global_persistence set_sleep_resolution;
 
 	internal bool write_entire_file(const s8 filename, void* memory, u64 mem_sz)
 	{
@@ -560,6 +584,7 @@ namespace OS
 		return ret;
 	}
 
+	//TODO(fran): #define max_hotkey_char_cnt 128 (or smth like that)
 	internal void HotkeyToString(hotkey_data hk, s8* hotkey_str)
 	{
 		//NOTE(fran): the best possible string conversion comes from the lparam value, only if the string for the virtual key code cant be retrieved from the lparam we attempt to get it from vk
@@ -581,8 +606,7 @@ namespace OS
 			first_mod = false;
 		}
 
-		utf8 _vk_str[128];
-		s8 vk_str{ .chars = _vk_str, .cnt = 0, .cnt_allocd = ArrayCount(_vk_str) };
+		s8 vk_str = stack_s(decltype(vk_str), 128);
 
 		wchar_t vk_str16[64];
 		//TODO(fran): we maaay want to have this stored in the language file instead?
@@ -614,8 +638,6 @@ namespace OS
 
 		b32 operator!() { return !this->hwnd; } //TODO(fran): replace with is_valid?
 		b32 operator==(window_handle cmp_wnd) { return this->hwnd == cmp_wnd.hwnd; }
-
-		//b32 operator!() volatile { return !this->hwnd; } //TODO(fran): this is for testing window creation from a different thread, we may want to get rid of this in the future
 
 	};
 
@@ -929,4 +951,118 @@ namespace OS
 		res.h = tm.tmHeight;
 		return res;
 	}
+
+	struct tray_icon {
+		NOTIFYICONDATAW notification;
+	};
+
+	internal tray_icon CreateTrayIcon(window_handle wnd) //TODO(fran): get the image from the caller
+	{
+		//NOTE(fran): realistically one application always has at most one tray icon, we wont bother with handling multiple ones
+
+		//TODO(fran): given that NOTIFYICONDATAW is huge (almost 1KB) we may wanna get a pointer to a tray_icon and directly modify the data avoiding the copy
+
+		tray_icon res{};
+		HINSTANCE instance = GetModuleHandleW(nil);
+		i32 SmallIconX = GetSystemMetrics(SM_CXSMICON);//TODO(fran): GetSystemMetricsForDpi?
+		HICON icon = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, SmallIconX, SmallIconX, 0);
+		assert(icon);
+
+		//TODO(fran): this may not work on Windows XP: https://docs.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-notifyicondataa
+		res.notification =
+		{
+			.cbSize = sizeof(res.notification),
+			.hWnd = wnd.hwnd,
+			.uID = 1,
+			.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_SHOWTIP,//TODO(fran): check this
+			.uCallbackMessage = WM_TRAY,
+			.hIcon = icon,
+			.szTip = appnameL, //NOTE(fran): must be less than 128 chars
+			.dwState = NIS_SHAREDICON,//TODO(fran): check this
+			.dwStateMask = NIS_SHAREDICON,
+			.szInfo = 0,
+			.uVersion = NOTIFYICON_VERSION_4,//INFO(fran): this changes the message format, but not when nif_showtip is enabled, I think
+			.szInfoTitle = 0,
+			.dwInfoFlags = NIIF_NONE,
+			//.guidItem = ,
+			.hBalloonIcon = NULL,
+		};
+
+		b32 ret = Shell_NotifyIconW(NIM_ADD, &res.notification);
+		assert(ret);
+
+		//TODO(fran): Check this: when changing system dpi the tray icon gets stretched by Windows, which obviously being Windows means after some stretchings the icon is a complete blurry mess, can we update the icon on dpi change?
+
+		return res;
+	}
+
+	internal void DestroyTrayIcon(tray_icon* tray) //TODO(fran): another name. RemoveTrayIcon?
+	{
+		BOOL ret = Shell_NotifyIconW(NIM_DELETE, &tray->notification);
+		DestroyIcon(tray->notification.hIcon);
+	}
+
+	internal b32 UnregisterSystemGlobalHotkey(OS::window_handle wnd, i32 id)
+	{
+		b32 res = ::UnregisterHotKey(wnd.hwnd, id);
+		return res;
+	}
+
+	internal b32 RegisterSystemGlobalHotkey(OS::window_handle wnd, OS::hotkey_data hotkey, i32 hotkey_id)
+	{
+		b32 res = RegisterHotKey(wnd.hwnd, hotkey_id, hotkey.mods | MOD_NOREPEAT, hotkey.vk); 
+		//NOTE(fran): if you dont associate the hotkey with any hwnd then it just sends the msg to the current thread with hwnd nil, also documentation says it can not associate the hotkey with a wnd created from another thread
+		return res;
+	}
+
+	internal s8 GetUIFontName() {
+		//Segoe UI (good txt, jp ok) (10 codepages) (supported on most versions of windows)
+		//-Arial Unicode MS (good text; good jp) (33 codepages) (doesnt come with windows)
+		//-Microsoft YaHei or UI (look the same,good txt,good jp) (6 codepages) (supported on most versions of windows)
+		//-Microsoft JhengHei or UI (look the same,good txt,ok jp) (3 codepages) (supported on most versions of windows)
+
+		HDC dc = GetDC(GetDesktopWindow()); defer{ ReleaseDC(GetDesktopWindow(),dc); };
+
+		struct search_font {
+			const char** fontname_options;
+			u32 fontname_cnt;
+			u32 best_match;
+			const char* match;
+		};
+
+		local_persistence const char* default_font = "";
+		local_persistence const char* requested_fontnames[] = { "Segoe UI", "Arial Unicode MS", "Microsoft YaHei", "Microsoft YaHei UI", "Microsoft JhengHei", "Microsoft JhengHei UI" };
+
+		search_font request = {
+			.fontname_options = requested_fontnames,
+			.fontname_cnt = ArrayCount(requested_fontnames),
+			.best_match = U32MAX,
+			.match = default_font,
+		};
+
+		//TODO(fran): this is stupid, there must be a way to question about a specific font without having to go through all of them. Also, can we do this with DirectWrite instead of Gdi?
+		EnumFontFamiliesExA(dc, nil
+			, [](const LOGFONTA* lpelfe, const TEXTMETRICA* /*lpntme*/, DWORD /*FontType*/, LPARAM lParam)->int
+			{
+				auto req = ((search_font*)lParam);
+				for (u32 i = 0; i < req->fontname_cnt; i++)
+				{
+					//if (_wcsicmp(req->fontname_options[i], lpelfe->lfFaceName) == 0) {
+					if (_stricmp(req->fontname_options[i], lpelfe->lfFaceName) == 0) {
+						if (i < req->best_match)
+						{
+							req->best_match = i;
+							req->match = req->fontname_options[i];
+							if (i == 0) return false;
+						}
+					}
+				}
+				return true;
+			}
+		, (LPARAM)&request, 0);
+
+		//return request.match;
+		return const_temp_s((utf8*)request.match);
+	}
+
 }
