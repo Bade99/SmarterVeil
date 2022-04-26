@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <d2d1_2.h>
 #include <dwrite.h>
@@ -25,11 +25,21 @@ internal D2D1_POINT_2F v2_to_D2DPOINT(v2 v)
     return res;
 }
 
+enum class AA{on=0, off}; //TODO(fran): support for different AA levels //TODO(fran): enum common to all renderers
+
 namespace iu{
+
+//TODO(fran): there's a mix of Render... (RenderText, RenderTexture) vs the straight up name (Line, Rectangle), do one or the other but not both
 
 struct ui_font { //TODO(fran): no handle and simply pass in the font name & size & other props and have fonts cached so they are reused if the same set of properties was already createds
     IDWriteFactory* fontFactory;
     IDWriteTextFormat* font;
+};
+
+struct ui_texture {
+    ID2D1Bitmap1* img;
+    u32 w, h;
+    u32 stride, bpp; //TODO(fran): remove?
 };
 
 struct d2d_renderer {
@@ -201,11 +211,11 @@ internal d3d11_renderer AcquireD3D11Renderer(HWND wnd)
 
 #if UICOMPOSITOR
     TESTHR(res.dxgiFactory->CreateSwapChainForComposition(res.dxgiDevice, &swapchainDesc
-        , nil /* Don�t restrict */, &res.swapChain)
+        , nil /* Don’t restrict */, &res.swapChain)
         , "Failed to create Swapchain for composition");
 #else
     TESTHR(res.dxgiFactory->CreateSwapChainForHwnd(res.dxgiDevice, wnd, &swapchainDesc
-        , nil, nil/* Don�t restrict */, &res.swapChain)
+        , nil, nil/* Don’t restrict */, &res.swapChain)
         , "Failed to create Swapchain for composition");
     //TODO(fran): is it ok to use the dxgiDevice, or should I use another one?
 #endif
@@ -577,6 +587,101 @@ internal void Ellipse(ui_renderer* renderer, v2 center, sz2 radius, f32 border_t
     EllipseOutline(renderer, center, radius, border_thickness, border_col);
 }
 
+internal ui_texture CreateTexture(ui_renderer* renderer, void* mem, u32 w, u32 h, u32 stride, u32 bpp/*bits per pixel*/) //TODO(fran): change to bytes per pixel, do we really want to support other bpps like 1bit? maybe for HDR, idk how it works but it may be needed to use bpp for it since the rgb components are 10bit
+{
+    //TODO(fran): hash table to store already generated images
+
+    auto r = renderer->renderer2D.deviceContext;
+
+    ui_texture res;
+    res.w = w; res.h = h; res.stride = stride; res.bpp = bpp;
+
+    D2D1_BITMAP_PROPERTIES1 props = { //TODO(fran): we may want to allow the user to set props like the pixel format, or otherwise we say everyone (every renderer & every image) must use rgba8 premultiplied (what about HDR?)
+    .pixelFormat = {DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED }, //NOTE(fran): direct2d only works with premultiplied alpha
+    .dpiX = 0, //TODO(fran): dpi
+    .dpiY = 0,
+    .bitmapOptions = D2D1_BITMAP_OPTIONS_NONE,
+    .colorContext = nil, //TODO(fran)
+    };
+
+    TESTHR(r->CreateBitmap({ w, h }, mem, stride, props, &res.img)
+        , "Failed to create Direct2D bitmap"); //TODO(fran): if creation fails return a default "empty" bitmap (I think 8x8 is the minimum)
+    return res;
+}
 //TODO(fran): bitmap creation, render, rendermask
+
+internal void RenderTexture(ui_renderer* renderer, ui_texture texture, rc2 rc)
+{
+    auto r = renderer->renderer2D.deviceContext;
+    r->DrawBitmap(texture.img, rc2_to_D2DRECT(rc)); //TODO(fran): make extra params available to the user
+}
+
+internal void RenderTextureOpacityMask(ui_renderer* renderer, ui_texture texture, rc2 rc, v4 col)
+{
+    auto r = renderer->renderer2D.deviceContext;
+    ID2D1SolidColorBrush* br{ 0 }; defer{ d3d_SafeRelease(br); };
+    auto brush_props = D2D1::BrushProperties(col.a);
+    r->CreateSolidColorBrush((D2D1_COLOR_F*)&col, &brush_props, &br);
+
+    //NOTE: FillOpacityMask requires Aliased Mode
+    auto oldmode = r->GetAntialiasMode(); defer{ r->SetAntialiasMode(oldmode); }; 
+    r->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
+
+    r->FillOpacityMask(texture.img, br, rc2_to_D2DRECT(rc));
+}
+
+internal D2D1_ANTIALIAS_MODE get_d2d_aa(AA aa)
+{
+    D2D1_ANTIALIAS_MODE aa_map[]{
+        D2D1_ANTIALIAS_MODE_PER_PRIMITIVE,
+        D2D1_ANTIALIAS_MODE_ALIASED,
+    };
+
+    auto res = aa_map[(int)aa];
+    return res;
+}
+
+internal AA get_aa(D2D1_ANTIALIAS_MODE aa)
+{
+    AA aa_map[]{
+        AA::on,
+        AA::off,
+    };
+
+    auto res = aa_map[(int)aa];
+    return res;
+}
+
+
+internal AA GetAntialiasing(ui_renderer* renderer)
+{
+    auto r = renderer->renderer2D.deviceContext;
+    auto res = get_aa(r->GetAntialiasMode());
+    return res;
+}
+
+//returns the previous AA
+internal AA SetAntialiasing(ui_renderer* renderer, AA aa)
+{
+    auto r = renderer->renderer2D.deviceContext;
+    auto res = GetAntialiasing(renderer);
+    r->SetAntialiasMode(get_d2d_aa(aa));
+    return res;
+}
+
+//TODO(fran): see what other rendering apis allow in terms of clipping since d2d is horribly limited & garbage
+//pushed regions get intersected (⋂) together
+internal void PushClipRegion(ui_renderer* renderer, rc2 rgn)
+{
+    auto r = renderer->renderer2D.deviceContext;
+    r->PushAxisAlignedClip(rc2_to_D2DRECT(rgn), get_d2d_aa(GetAntialiasing(renderer)));
+    //TODO(fran): this function asks for the antialiasing mode for the borders of the clipped region, should we allow the user to set it to smth different than the current antialiasing mode?
+}
+
+internal void PopClipRegion(ui_renderer* renderer)
+{
+    auto r = renderer->renderer2D.deviceContext;
+    r->PopAxisAlignedClip();
+}
 
 }

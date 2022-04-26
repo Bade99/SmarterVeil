@@ -75,6 +75,9 @@
     <ClInclude Include="iu_renderer_directx11.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="iu_declaration.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

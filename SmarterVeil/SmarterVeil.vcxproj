@@ -169,6 +169,7 @@
     <ClInclude Include="basic_string.h" />
     <ClInclude Include="basic_timing.h" />
     <ClInclude Include="basic_types.h" />
+    <ClInclude Include="iu_declaration.h" />
     <ClInclude Include="iu_renderer_directx11.h" />
     <ClInclude Include="lang.h" />
     <ClInclude Include="OS_windows.h" />

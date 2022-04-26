@@ -2,6 +2,8 @@
 
 #define IU_RENDERER_DIRECTX11
 
+#include "iu_declaration.h"
+
 #include "assets/embedded_images.h"
 
 #include <initializer_list> 
@@ -173,67 +175,54 @@ struct fifo_queue {
     }
 };
 
-enum class input_key_state : u8 {//NOTE(fran): all the states are mutually exclusive
-    doubleclicked = (1 << 0), //NOTE(fran): double click is an annoying feature, we'll simply ignore it as much as we can for now
-    clicked = (1 << 1),
-    pressed = (1 << 2),
-    unclicked = (1 << 3),
-    //TODO(fran): analyze times between clicks (or click unclick) to see if it's worth it to register multiple clicks per run
-    //TODO(fran): check out rawinput (for gamedev)
-
-    //IMPORTANT(fran): OS's handling of double click: 
-        //Windows: we recieve a click message for the first click, and a doubleclick msg for the second click, therefore we should interpret 'doubleclicked' also as 'clicked' for the people that dont handle doubleclick
-
-    //TODO(fran): we could handle this on our side, have the ui code interpret very close clicks as a double click, that'd be easier to port to other OSs that may not do the same as Windows
-};
-
-internal b32 IsClicked(input_key_state key)
+internal b32 IsClicked(iu::ui_key_state key) //TODO(fran): change params to ui_state* and ui_key, that way we can hide extra implementation details like the analogue component of the key
 {
-    b32 res = key == input_key_state::clicked || key == input_key_state::doubleclicked;
+    b32 res = key == iu::ui_key_state::clicked || key == iu::ui_key_state::doubleclicked;
     return res;
 }
 
-internal b32 IsPressed(input_key_state key)
+internal b32 IsPressed(iu::ui_key_state key)
 {
-    b32 res = key == input_key_state::pressed;
+    b32 res = key == iu::ui_key_state::pressed;
     return res;
 }
 
-internal b32 IsUnclicked(input_key_state key)
+internal b32 IsUnclicked(iu::ui_key_state key)
 {
-    b32 res = key == input_key_state::unclicked;
+    b32 res = key == iu::ui_key_state::unclicked;
     return res;
 }
 
-internal b32 IsDoubleclicked(input_key_state key)
+internal b32 IsDoubleclicked(iu::ui_key_state key)
 {
-    b32 res = key == input_key_state::doubleclicked;
+    b32 res = key == iu::ui_key_state::doubleclicked;
     return res;
 }
 
-namespace input_key { //NOTE(fran): this is an 'enum class' but without the type conversion issues
-    enum : u32 {
-        left_mouse = 0,
-        right_mouse,
-    };
+internal b32 IsDown(iu::ui_key_state key)
+{
+    b32 res = IsClicked(key) || IsPressed(key) || IsDoubleclicked(key);
+    return res;
 }
 
 struct ui_input { //user input
     b32 close;//NOTE(fran): the os/user can request the app to be closed through means outside of the ui's control
     v2 mouseP;//INFO(fran): mouse coordinates must be relative to the window area (client area on Windows) and with x-axis going right and y-axis going down
     v2 screen_mouseP;
-    input_key_state keys[2];
+    iu::ui_key_state keys[iu::ui_key::_COUNT];
     f32 mouseVScroll; //NOTE(fran): indicates the number of units to scroll (eg a value of 1 means to scroll 1 unit), the unit will be determined by whoever handles the scroll
-    //TODO(fran): some mice, like the G502 Hero that Im using, allow horizontal scrolling (by moving the scroll wheel to the sides), how do they do it & can we handle that case?
-    //TODO(fran): on Windows mouseVScroll is positive when the user moves the finger upwards through the wheel, & negative when moving the finger downwards, idk how we should do it in other OSs
+    f32 mouseHScroll; //TODO(fran): join with mouseVScroll into a v2?
 
     OS::hotkey_data hotkey; //TODO(fran): this should be replaceable by keyboard input
     i32 global_hotkey_id; //System wide hotkey, received from the OS at any time
 
     struct {
         b32 on_unclick, on_unrclick;
-        //TODO(fran): store mouseP
+        //TODO(fran): store screenmouseP
     } tray;
+
+    utf8 _text[100]; //TODO(fran): this may be too small for input from the IME
+    s8 text; //TODO(fran): how to automatically store the byte array (_text) inside the s8?
 
     //TODO(fran): f32 dt; or calculate dt on our own inside uiprocessing
 };
@@ -292,8 +281,6 @@ struct hotkey_theme {
     ui_style style;
     HFONT font = 0;//TODO(fran)
 };
-
-//FUTURE TODO(fran): the style flags should all be placed inside a single common enum
 
 struct slider_theme {
     struct color {
@@ -423,8 +410,7 @@ enum class hotkey_string_state {
     placeholder = 0, validhk, invalidhk
 };
 
-//TODO(fran): use iu::ui_renderer
-#define _UI_IMAGE_RENDERCOMANDS_ARGS (ID2D1DeviceContext* renderer2D, ID2D1SolidColorBrush* brush, rc2 placement, void* context)
+#define _UI_IMAGE_RENDERCOMANDS_ARGS (iu::ui_renderer* r, v4 col, rc2 placement, void* context)
 #define UI_IMAGE_RENDERCOMANDS(name) void(name)_UI_IMAGE_RENDERCOMANDS_ARGS
 #define UI_IMAGE_RENDERCOMANDS_LAMBDA []_UI_IMAGE_RENDERCOMANDS_ARGS -> void
 typedef UI_IMAGE_RENDERCOMANDS(image_rendercommands);
@@ -634,19 +620,47 @@ struct ui_state {
     ui_state* context_menu; //TODO(fran): I dont see the need to store a pointer to another window, all state is handled outside of it, so I dont see reason to need it, change this to a dynamic array that handles & dispatches all windows (all ui_states)
     //NOTE(fran): each time we use a context menu we need to create a whole new state object, in order to save time we will not later destroy those objects but instead leave them for reuse
     //NOTE(fran): a benefit of context menus is they never get resized by the user, meaning we can actually create those windows directly from this thread
-
-    //b32 _last_mouse_was_inside;
 };
 
-declaration internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, b32 is_context_menu);
-declaration internal void ReleaseUIState(ui_state* ui);
+
+internal language_manager* AcquireLanguageManager() //TODO(fran): maybe this should go in the language header file
+{
+    local_persistence b32 initialized = false;
+    local_persistence language_manager _res;
+    language_manager* res = &_res;
+
+    if (!initialized) {
+        initialized = true;
+
+        utf8 lang_folder[] = u8"lang/";
+        memcpy(res->lang_folder, lang_folder, sizeof(lang_folder));
+
+        initialize_arena(&res->string_mapping_arena, res->_string_mapping_arena, sizeof(res->_string_mapping_arena));
+
+        language default_langs[] = {
+            { lang_english_entries, sizeof(lang_english_entries)},
+            { lang_español_entries, sizeof(lang_español_entries)},
+        };
+
+        //TODO(fran): timing & optimization for save_languages_to_disc & load_languages_from_disc (on ssd & hdd), im sure that if many languages are added our start time will be horrible
+        save_languages_to_disc(default_langs, ArrayCount(default_langs), temp_s(res->lang_folder));
+
+        res->available_languages_cnt = 0;
+
+        res->load_languages_from_disc();
+
+        utf8 language_to_use[locale_max_length] = u8"en-us"; //TODO(fran): get from config file
+
+        res->ChangeLanguage(temp_s(language_to_use));
+    }
+    return res;
+}
+
 declaration internal void UIProcessing(ui_state* ui);
 
 namespace iu {
-
-    IF_OS_WINDOWS(struct win32_event { HWND hwnd; UINT msg; WPARAM wparam; LPARAM lparam; });
-
-    declaration internal void io_thread_handler();
+    declaration internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, b32 is_context_menu);
+    declaration internal void ReleaseUIState(ui_state* ui);
 
     struct iu_state {
         memory_arena arena;
@@ -659,14 +673,7 @@ namespace iu {
             fixed_array<ui_state*, 16> inactive{};
         }contextmenuwindows;
 
-        IF_OS_WINDOWS(fifo_queue<win32_event> events); //TODO(fran): OS independent event
-        IF_OS_WINDOWS(HANDLE io_thread);
-
-        //NOTE(fran): single thread idea:
-        //https://github.com/libsdl-org/SDL/issues/1059#issuecomment-933625247
-        //https://gist.github.com/RT222/804bda0bb1ed305e6351dc3a9a07869b
-        //https://www.gamedev.net/forums/topic/488074-win32-message-pump-and-opengl---rendering-pauses-while-draggingresizing/
-        //https://www.google.com/search?q=win32+stop+thread+locking+on+resize&rlz=1C1GIWA_enAR589AR589&oq=win32+stop+thread+locking+on+resize&aqs=chrome..69i57j33i160.4553j0j7&sourceid=chrome&ie=UTF-8
+        fifo_queue<ui_event> events;
 
         iu_state()
         {
@@ -678,12 +685,8 @@ namespace iu {
 
             OS::SetDPIAware();
 
-            IF_OS_WINDOWS(
-                constexpr int event_cap = 1000;
-            this->events = { .cnt = 0, .cnt_allocd = event_cap, .current = 0, .arr = push_arr(&this->arena, win32_event, event_cap) };
-            this->io_thread = ::CreateThread(nil, 0, [](void*)->DWORD {io_thread_handler(); return 0; }, nil, 0, nil);
-            //::AttachThreadInput(::GetThreadId(this->io_thread), ::GetCurrentThreadId(),true); //TODO(fran): doesnt work either way, maybe because the msg queues havent been created in neither thread???
-            );
+            constexpr int event_cap = 1000;
+            this->events = { .cnt = 0, .cnt_allocd = event_cap, .current = 0, .arr = push_arr(&this->arena, ui_event, event_cap) };
         }
 
         ~iu_state()
@@ -696,7 +699,6 @@ namespace iu {
 
             VirtualFree((void*)this->arena.base, 0, MEM_RELEASE);
             zero_struct(this->arena);
-            IF_OS_WINDOWS(TerminateThread(this->io_thread, 0)); //TODO(fran): we may want to do termination from inside the thread, TerminateThread is not too safe
             //fixed_array_header<ui_state*> arrs[] = { windows.active, windows.inactive, contextmenuwindows.active, contextmenuwindows.inactive };
             //for(auto& a : arrs)
             //    for(auto& w : a)
@@ -705,70 +707,43 @@ namespace iu {
 
     } local_persistence state;
 
-    iu_state* get_state() { return &state; }
+    iu_state* GetState() { return &state; }
 
-    definition internal void io_thread_handler()
+    definition void PushEventMousePos(OS::window_handle wnd, v2 mouseP, v2 mouseScreenP)
     {
-        //TODO(fran): we could move all this msg processing code to the OS specific section and simply provide access to the iu's message queue
-        while (true)
-        {
-            MSG msg;
-            //NOTE(fran): under the hood PeekMessage is responsible for handling SendMessage (aka dispatching straight to the wndproc), the msgs sent through that way are hidden from the main msg queue & not available to the user, aka me, or at least I havent found a way to get to them yet before they are dispatched
-            while (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE))
-            {
-                //GetMessageW(&msg, 0, 0, 0);
-                TranslateMessage(&msg);
-
-                switch (msg.message)
-                {
-                case WM_LBUTTONDOWN:
-                {
-                    SetCapture(msg.hwnd);
-                    goto push_event;
-                } break;
-                case WM_LBUTTONUP:
-                {
-                    ReleaseCapture();
-                    goto push_event;
-                } break;
-                case WM_MOUSEMOVE:
-                {
-                    TRACKMOUSEEVENT tme{ .cbSize = sizeof(tme), .dwFlags = TME_LEAVE, .hwndTrack = msg.hwnd };
-                    ::TrackMouseEvent(&tme); //TODO(fran): only ask for tracking if not already tracking
-                    goto push_event;
-                } break;
-                case WM_TRAY:
-                case WM_DPICHANGED_CUSTOM:
-                case WM_CLOSE_CUSTOM:
-                {
-                    goto push_event_no_dispatch; //TODO(fran): we could simply dispatch, it will go to the defwndproc and do nothing
-                } break;
-                //case WM_CHAR:
-                //case WM_KEYDOWN:
-                //TODO(fran): case WM_MOUSEHWHEEL:
-                case WM_HOTKEY:
-                case WM_CLOSE:
-                case WM_LBUTTONDBLCLK:
-                case WM_RBUTTONDOWN:
-                case WM_RBUTTONUP:
-                case WM_RBUTTONDBLCLK:
-                case WM_SYSKEYDOWN:
-                case WM_KEYDOWN:
-                case WM_MOUSEWHEEL:
-                case WM_MOUSELEAVE:
-                {
-                push_event:
-                    get_state()->events.push({ .hwnd = msg.hwnd, .msg = msg.message, .wparam = msg.wParam, .lparam = msg.lParam });
-                    break;
-                push_event_no_dispatch:
-                    get_state()->events.push({ .hwnd = msg.hwnd, .msg = msg.message, .wparam = msg.wParam, .lparam = msg.lParam });
-                    continue;
-                } break;
-                }
-                DispatchMessageW(&msg);
-            }
-            ::MsgWaitForMultipleObjectsEx(0, nil, INFINITE, QS_ALLINPUT, 0 | MWMO_ALERTABLE | MWMO_INPUTAVAILABLE); //TODO(fran): MWMO_INPUTAVAILABLE
-        }
+        GetState()->events.push({ .type = ui_event_type::MouseP, .destination = wnd, .mousep = {.p = mouseP, .screenP = mouseScreenP} });
+    }
+    definition void PushEventMouseWheel(OS::window_handle wnd, v2 wheelStep)
+    {
+        GetState()->events.push({ .type = ui_event_type::MouseWheel, .destination = wnd, .mousewheel = {.wheel = wheelStep} });
+    }
+    definition void PushEventMouseButton(OS::window_handle wnd, ui_key mousebutton, ui_key_state state)
+    {
+        GetState()->events.push({ .type = ui_event_type::MouseButton, .destination = wnd, .mousebutton = {.button = mousebutton, .state = state} });
+    }
+    definition void PushEventTray(OS::window_handle wnd, ui_key mousebutton, ui_key_state state)
+    {
+        GetState()->events.push({ .type = ui_event_type::Tray, .destination = wnd, .tray = {.button = mousebutton, .state = state} });
+    }
+    definition void PushEventKey(OS::window_handle wnd, ui_key key, ui_key_state state)
+    {
+        GetState()->events.push({ .type = ui_event_type::Key, .destination = wnd, .key = {.button = key, .state = state} });
+    }
+    definition void PushEventText(OS::window_handle wnd, utf8 c)
+    {
+        GetState()->events.push({ .type = ui_event_type::Text, .destination = wnd, .text = {.c = c} });
+    }
+    definition void PushEventDpi(OS::window_handle wnd, f32 dpi)
+    {
+        GetState()->events.push({ .type = ui_event_type::Dpi, .destination = wnd, .dpi = {.dpi = dpi} });
+    }
+    definition void PushEventClose(OS::window_handle wnd)
+    {
+        GetState()->events.push({ .type = ui_event_type::Close, .destination = wnd, .close = {} });
+    }
+    definition void PushEventSystemWideHotkey(OS::window_handle wnd, i32 hotkey_id)
+    {
+        GetState()->events.push({ .type = ui_event_type::SystemGlobalHotkey, .destination = wnd, .systemwidehotkey = {.id = hotkey_id} });
     }
 
     internal void PreAdjustInput(ui_input* ui_input)
@@ -777,83 +752,54 @@ namespace iu {
         ui_input->hotkey = { 0 };
         ui_input->global_hotkey_id = 0;//TODO(fran): we could also send the full info, id+vk+mods
         ui_input->mouseVScroll = 0;
-
-        for (i32 i = 0; i < ArrayCount(ui_input->keys); i++)
-            if (ui_input->keys[i] == input_key_state::clicked || ui_input->keys[i] == input_key_state::doubleclicked)
-                ui_input->keys[i] = input_key_state::pressed;
-
-        //IMPORTANT NOTE(fran): We'll use Windows style right click handling, where it does not care about anything but the element that was under the mouse when the unrclick event happens. This means we wont have an interacting_with element and therefore we need to manually reset the key state in order to avoid infinite key repeats
-            //TODO(fran): this may need to be specialized for different OSs inside veil_ui
-        if (ui_input->keys[input_key::right_mouse] == input_key_state::unclicked)
-            ui_input->keys[input_key::right_mouse] = {};
-
+        ui_input->mouseHScroll = 0;
         ui_input->tray.on_unclick = false;
         ui_input->tray.on_unrclick = false;
+        
+        ui_input->text = { .chars = ui_input->_text, .cnt = 0, .cnt_allocd = ArrayCount(ui_input->_text) };
+
+        for (auto& key : ui_input->keys)
+        {
+            if (key == iu::ui_key_state::clicked || key == iu::ui_key_state::doubleclicked)
+                key = iu::ui_key_state::pressed;
+            else if (key == iu::ui_key_state::unclicked)
+                key = {};
+        }
     }
 
-    internal void GetInput(ui_state* ui, MSG msg)
+    internal void GetInput(ui_state* ui, ui_event event)
     {
         ui_input& ui_input = ui->input;
-        //TODO(fran): msg.hwnd is null when clicking inside the client area of the window, we cant know which window is being addressed if we had multiple ones (all this because PostThreadMessageW doesnt let you pass the hwnd, is there a way to pass it?)
-                    //if (msg.hwnd == Veil->ui.wnd) { //Check for interesting messages to the UI
 
-        //IMPORTANT TODO(fran): now we have hwnds created on both threads we'd need to copy the extra handling that we have on specific messages on the main thread, eg SetCapture(),...
-        switch (msg.message)
+        switch (event.type)
         {
-        case WM_CLOSE_CUSTOM:
+        case ui_event_type::Close:
         {
             ui_input.close = true;
         } break;
-        case WM_DPICHANGED_CUSTOM:
+        case ui_event_type::Dpi:
         {
-            ui->scaling = (f32)LOWORD(msg.wParam) / 96.f /*aka USER_DEFAULT_SCREEN_DPI */;
-            assert(LOWORD(msg.wParam) == HIWORD(msg.wParam));
-            //RECT suggested_window = *(RECT*)msg.lParam;
-            //MovWindow(Veil->wnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
+            ui->scaling = event.dpi.dpi;
         } break;
-        case WM_MOUSEMOVE:
+        case ui_event_type::MouseP:
         {
-            POINT p{ GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam) };
-            POINT screenP = p;
-            MapWindowPoints(ui->wnd.hwnd, HWND_DESKTOP, &screenP, 1);
+            ui_input.mouseP = event.mousep.p;
 
-            ui_input.mouseP = v2_from(p.x, p.y);
-
-            ui_input.screen_mouseP = v2_from(screenP.x, screenP.y);
+            ui_input.screen_mouseP = event.mousep.screenP;
         } break;
-        case WM_MOUSELEAVE:
+        case ui_event_type::MouseButton:
         {
-            ui_input.mouseP = ui_input.screen_mouseP =
-#ifdef DEBUG_BUILD
-            { -1, -1 }; //NOTE(fran): for ease of debugging
-#else
-            { F32MIN, F32MIN };
-#endif
+            ui_input.keys[event.mousebutton.button] = event.mousebutton.state;
         } break;
-        case WM_LBUTTONDOWN:
+        //case WM_LBUTTONDOWN:
+        //{
+        //    ui_input.keys[iu::ui_key::MouseLeft] = iu::ui_key_state::clicked;
+        //} break;
+        case ui_event_type::Key:
         {
-            ui_input.keys[input_key::left_mouse] = input_key_state::clicked;
+            ui_input.keys[event.key.button] = event.key.state;
         } break;
-        case WM_LBUTTONUP:
-        {
-            ui_input.keys[input_key::left_mouse] = input_key_state::unclicked;
-        } break;
-        case WM_LBUTTONDBLCLK:
-        {
-            ui_input.keys[input_key::left_mouse] = input_key_state::doubleclicked;
-        } break;
-        case WM_RBUTTONDOWN:
-        {
-            ui_input.keys[input_key::right_mouse] = input_key_state::clicked;
-        } break;
-        case WM_RBUTTONUP:
-        {
-            ui_input.keys[input_key::right_mouse] = input_key_state::unclicked;
-        } break;
-        case WM_RBUTTONDBLCLK:
-        {
-            ui_input.keys[input_key::right_mouse] = input_key_state::doubleclicked;
-        } break;
+#if 0
         case WM_SYSKEYDOWN:
         case WM_KEYDOWN:
         {
@@ -883,49 +829,40 @@ namespace iu {
             }
             ui_input.hotkey.mods = (ctrl_is_down ? MOD_CONTROL : 0) | (alt_is_down ? MOD_ALT : 0) | (shift_is_down ? MOD_SHIFT : 0);
         } break;
-        case WM_HOTKEY: //NOTE(fran): system-wide global hotkey
+#endif
+        case ui_event_type::SystemGlobalHotkey:
         {
-            i32 id = msg.wParam;
-            u16 mods = LOWORD(msg.lParam);
-            u8 vk = HIWORD(msg.lParam);
-            ui_input.global_hotkey_id = id;
+            ui_input.global_hotkey_id = event.systemwidehotkey.id;
         } break;
-        case WM_MOUSEWHEEL:
+        case ui_event_type::MouseWheel:
         {
-            //TODO(fran): we can also use the wParam to get the state of Ctrl, Shift, Mouse Click & others
-            f32 zDelta = (f32)GET_WHEEL_DELTA_WPARAM(msg.wParam) / (f32)WHEEL_DELTA;
-            //NOTE(fran): zDelta indicates the number of units to scroll (the unit will be determined by whoever handles the scroll)
-            ui_input.mouseVScroll = zDelta;
+            ui_input.mouseVScroll += event.mousewheel.wheel.y;
+            ui_input.mouseHScroll += event.mousewheel.wheel.x;
         } break;
-        case WM_TRAY:
+        case ui_event_type::Tray:
         {
-            switch (LOWORD(msg.lParam))
-            {
-                //NOTE(fran): for some reason the tray only sends WM_LBUTTONDOWN once the mouse has been released, so here WM_LBUTTONDOWN counts as WM_LBUTTONUP, same for right click
-            case WM_LBUTTONDOWN:
-            {
-                ui_input.tray.on_unclick = true;
-            } break;
-            case WM_RBUTTONDOWN:
-            {
-                ui_input.tray.on_unrclick = true;
-            } break;
-            }
+            //TODO(fran): use event.tray.state
+            ui_input.tray.on_unclick |= event.tray.button == ui_key::MouseLeft;
+            ui_input.tray.on_unrclick |= event.tray.button == ui_key::MouseRight;
         } break;
+        case ui_event_type::Text:
+        {
+            ui_input.text += event.text.c;
+        } break;
+        default: assert(0); break;
         }
-        //}
     }
 
-    internal void update_and_render()
+    internal void UpdateAndRender()
     {
         TIMEDFUNCTION();
         //TODO(fran): move windows to inactive state or let the ui itself do it?
-        auto state = get_state();
+        auto state = GetState();
 
         IF_OS_WINDOWS(
-            local_persistence b32 ret = ::AttachThreadInput(::GetCurrentThreadId(), ::GetThreadId(state->io_thread), true);
+            local_persistence b32 ret = ::AttachThreadInput(::GetCurrentThreadId(), ::GetThreadId(_OS::thread_setup.io_thread), true); //TODO(fran): to allow multithreaded window handling (mainly the 'update' part this would need to be called on every new thread)
         assert(ret);
-        //NOTE(fran): works here, it probably needed the msg queues to be already initialized
+        //NOTE(fran): AttachThreadInput works from here, it needs both the msg queues to be already initialized
         //TODO(fran): it can happen that this function is called when no windows have yet been created on the threads (also im currently creating a window on the main thread by hand but that shouldnt happen normally), we should add some code that makes sure that both threads can be attached:
             //Docs say: The AttachThreadInput function fails if either of the specified threads does not have a message queue. The system creates a thread's message queue when the thread makes its first call to one of the USER or GDI functions
         );
@@ -937,30 +874,24 @@ namespace iu {
             for (auto& ui : a)
                 PreAdjustInput(&ui->input);
 
-        win32_event event;
+        ui_event event;
+        next_event:
         while (state->events.pop(&event))
         {
             //TODO(fran): OPTIMIZE: hashtable?
             for (auto& a : all)
                 for (auto& ui : a)
-                {
-                    if (ui->wnd.hwnd == event.hwnd) //TODO(fran): find out if some broadcast messages simply have the hwnd set to null, in that case we'd need to send that single event to all windows
+                    if (ui->wnd == event.destination)
                     {
-                        MSG msg = { .hwnd = event.hwnd, .message = event.msg, .wParam = event.wparam, .lParam = event.lparam };
-                        GetInput(ui, msg);
+                        GetInput(ui, event);
                         goto next_event; //TODO(fran): find out how to skip to the next while step without goto
                     }
-                }
-        next_event:
-            ; //NOTE(fran): really C++? how stupid is this
         }
-
-        //TODO(fran): AdjustMouse, but first try to fix it with WM_MOUSELEAVE
 
         //TODO(fran): one frame initialization for global ui things
         //Temporary Arena initialization
-        ui_state* ui = state->windows.active.arr[0]; //TODO(fran): lang mgr should be global and not obtained through a window in this hacky way
-        initialize_arena(&ui->LanguageManager->temp_string_arena, ui->LanguageManager->_temp_string_arena, sizeof(ui->LanguageManager->_temp_string_arena));
+        auto lang_mgr = state->windows.active.arr[0]->LanguageManager; //TODO(fran): lang mgr should be global and not obtained through a window in this hacky way
+        initialize_arena(&lang_mgr->temp_string_arena, lang_mgr->_temp_string_arena, sizeof(lang_mgr->_temp_string_arena));
 
         for (auto& a : actives)
             for (auto& ui : a)
@@ -972,7 +903,7 @@ namespace iu {
         OS::window_handle res;
         //TODO(fran): OS independent, not only for Windows' crap
         //TODO(fran): looks like a combination of AttachThreadInput & QueueUserAPC could solve all my problems
-        auto state = get_state();
+        auto state = GetState();
 
         //TODO(fran): remove the b32 done and check the wnd handle?
         struct _create_wnd { OS::window_handle wnd; OS::window_creation_flags flags; b32 done; };
@@ -987,7 +918,7 @@ namespace iu {
                 create_wnd->wnd = OS::Window(create_wnd->flags);
                 create_wnd->done = true;
             }
-        , state->io_thread, (ULONG_PTR)&create_wnd);
+        , _OS::thread_setup.io_thread, (ULONG_PTR)&create_wnd);
 
         while (!create_wnd.done) {}
 
@@ -998,9 +929,77 @@ namespace iu {
         return res;
     }
 
+    internal f32 GetNewScaling(ui_state* ui)
+    {
+        f32 res = OS::GetScalingForWindow(ui->wnd);
+        return res;
+    }
+
+    definition internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, b32 is_context_menu = false/*TODO(fran): this is kinda pointless, we could create a ui_element that resizes the window it's in based on the size of its childs*/)
+    {
+        res->wnd = ui_wnd;
+        res->interacting_with = nil;
+        res->under_the_mouse = nil;
+        res->keyboard_focus = nil;
+        res->placement = { 0 };
+        res->render_and_update_screen = true;
+
+        local_persistence i32 alloc_cnt = 0;
+
+        u32 total_sz = Megabytes(1);
+#ifdef DEBUG_BUILD
+        LPVOID base_address = (LPVOID)(Terabytes(1) + alloc_cnt++ * total_sz); //Fixed address for ease of debugging
+#else
+        LPVOID base_address = 0;
+#endif
+
+        //NOTE(fran): ui states can be reacquired, for that we must know wether or not this ui state has been previously initialized
+
+        b32 already_initialized = res->permanent_arena.base != 0;
+
+        if (!already_initialized)
+        {
+            res->is_context_menu = is_context_menu; //TODO(fran): allow changing a window from normal to context_menu?
+
+            res->_last_scaling = res->scaling = GetNewScaling(res); //TODO(fran): this is actually wrong since we dont yet know the location of the window and therefore the dpi of its containing monitor, this only works for single monitor setups
+
+            res->renderer = iu::AcquireRenderer(res->wnd, res->scaling);
+        }
+
+        //TODO(fran): require default zero initialization
+        void* mem = already_initialized ? res->permanent_arena.base : VirtualAlloc(base_address, total_sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);//TODO(fran): use large pages
+
+        initialize_arena(&res->permanent_arena, (u8*)mem, total_sz);
+        assert(res->permanent_arena.base);
+        //TODO(fran): zero memory, VirtualAlloc does it the first time, but after that it'll be filled with garbage
+
+        zero_struct(res->global_registered_hotkeys);
+
+        res->context_menu = nil;
+
+        res->LanguageManager = AcquireLanguageManager();
+
+        res->elements = nil;
+
+        res->input.mouseP = res->input.screen_mouseP =
+#ifdef DEBUG_BUILD
+        { -1, -1 }; //NOTE(fran): for ease of debugging
+#else
+        { F32MIN, F32MIN };
+#endif
+    }
+
+    definition internal void ReleaseUIState(ui_state* ui) {
+
+        VirtualFree(ui->permanent_arena.base, 0, MEM_RELEASE);
+        ui->permanent_arena = { 0 };
+
+        iu::ReleaseRenderer(&ui->renderer);
+    }
+
     internal ui_state* window(OS::window_creation_flags creation_flags)
     {
-        auto state = get_state();
+        auto state = GetState();
         ui_state* res = push_type(&state->arena, ui_state); //TODO(fran): zeroing required?
         auto wnd = _createwindow(creation_flags); assert(wnd);
 
@@ -1013,7 +1012,7 @@ namespace iu {
 
     definition internal ui_state* window_contextmenu()
     {
-        auto state = get_state();
+        auto state = GetState();
         ui_state* res = push_type(&state->arena, ui_state); //TODO(fran): zeroing required?
         auto wnd = _createwindow(OS::window_creation_flags::contextmenu); assert(wnd);
 
@@ -1420,107 +1419,6 @@ namespace common_ui_actions
     };
 }
 
-internal language_manager* AcquireLanguageManager()
-{
-    local_persistence b32 initialized = false;
-    local_persistence language_manager _res;
-    language_manager* res = &_res;
-
-    if (!initialized) {
-        initialized = true;
-
-        utf8 lang_folder[] = u8"lang/";
-        memcpy(res->lang_folder, lang_folder, sizeof(lang_folder));
-
-        initialize_arena(&res->string_mapping_arena, res->_string_mapping_arena, sizeof(res->_string_mapping_arena));
-
-        language default_langs[] = {
-            { lang_english_entries, sizeof(lang_english_entries)},
-            { lang_español_entries, sizeof(lang_español_entries)},
-        };
-
-        //TODO(fran): timing & optimization for save_languages_to_disc & load_languages_from_disc (on ssd & hdd), im sure that if many languages are added our start time will be horrible
-        save_languages_to_disc(default_langs, ArrayCount(default_langs), temp_s(res->lang_folder));
-
-        res->available_languages_cnt = 0;
-
-        res->load_languages_from_disc();
-
-        utf8 language_to_use[locale_max_length] = u8"en-us"; //TODO(fran): get from config file
-
-        res->ChangeLanguage(temp_s(language_to_use));
-    }
-    return res;
-}
-
-internal f32 GetNewScaling(ui_state* ui)
-{
-    f32 res = OS::GetScalingForWindow(ui->wnd);
-    return res;
-}
-
-internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, b32 is_context_menu = false/*TODO(fran): this is kinda pointless, we could create a ui_element that resizes the window it's in based on the size of its childs*/)
-{
-    res->wnd = ui_wnd;
-    res->interacting_with = nil;
-    res->under_the_mouse = nil;
-    res->keyboard_focus = nil;
-    res->placement = { 0 };
-    res->render_and_update_screen = true;
-
-    local_persistence i32 alloc_cnt = 0;
-
-    u32 total_sz = Megabytes(1);
-#ifdef DEBUG_BUILD
-    LPVOID base_address = (LPVOID)(Terabytes(1) + alloc_cnt++ * total_sz); //Fixed address for ease of debugging
-#else
-    LPVOID base_address = 0;
-#endif
-
-    //NOTE(fran): ui states can be reacquired, for that we must know wether or not this ui state has been previously initialized
-
-    b32 already_initialized = res->permanent_arena.base!=0;
-
-    if (!already_initialized)
-    {
-        res->is_context_menu = is_context_menu; //TODO(fran): allow changing a window from normal to context_menu?
-
-        res->_last_scaling = res->scaling = GetNewScaling(res); //TODO(fran): this is actually wrong since we dont yet know the location of the window and therefore the dpi of its containing monitor, this only works for single monitor setups
-
-        res->renderer = iu::AcquireRenderer(res->wnd, res->scaling);
-    }
-
-    //TODO(fran): require default zero initialization
-    void* mem = already_initialized ? res->permanent_arena.base : VirtualAlloc(base_address, total_sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);//TODO(fran): use large pages
-
-    initialize_arena(&res->permanent_arena, (u8*)mem, total_sz);
-    assert(res->permanent_arena.base);
-    //TODO(fran): zero memory, VirtualAlloc does it the first time, but after that it'll be filled with garbage
-
-    zero_struct(res->global_registered_hotkeys);
-
-    res->context_menu = nil;
-
-    res->LanguageManager = AcquireLanguageManager();
-
-    res->elements = nil;
-
-    res->input.mouseP = res->input.screen_mouseP =
-#ifdef DEBUG_BUILD
-    { -1, -1 }; //NOTE(fran): for ease of debugging
-#else
-    { F32MIN, F32MIN };
-#endif
-}
-
-internal void ReleaseUIState(ui_state* ui) {
-    
-    VirtualFree(ui->permanent_arena.base, 0, MEM_RELEASE);
-    ui->permanent_arena = { 0 };
-
-    iu::ReleaseRenderer(&ui->renderer);
-}
-
 internal void AcquireTrayIcon(ui_state* ui, ui_action on_unclick, ui_action on_unrclick)
 {
     ui->tray =
@@ -1674,7 +1572,7 @@ internal void BeginInteraction(ui_state* ui, ui_element* next_hot, ui_input* inp
             auto& data = element->data.button;
 
             //TODO(fran): quick HACK: make it official whether we are currently working with left or right click
-            if (IsDoubleclicked(input->keys[input_key::left_mouse]))
+            if (IsDoubleclicked(input->keys[iu::ui_key::MouseLeft]))
                 safe_call(data.OnDoubleClick.action, element, data.OnDoubleClick.context);
             else 
                 safe_call(data.OnClick.action, element, data.OnClick.context);
@@ -1683,7 +1581,7 @@ internal void BeginInteraction(ui_state* ui, ui_element* next_hot, ui_input* inp
         {
             auto& data = element->data.background;
             //TODO(fran): same quick HACK
-            if (IsDoubleclicked(input->keys[input_key::left_mouse]))
+            if (IsDoubleclicked(input->keys[iu::ui_key::MouseLeft]))
                 safe_call(data.OnDoubleClick.action, element, data.OnDoubleClick.context);
             else
                 safe_call(data.OnClick.action, element, data.OnClick.context);
@@ -1756,8 +1654,7 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, ui_input* 
         EnableRendering(ui, last_interaction_st != element->interaction_st);
     }
 
-    //NOTE(fran): only the window directly under the mouse can change the mouse icon
-    if (next_hot && ui->under_the_mouse != next_hot) //TODO(fran): extra check: while on interaction (by any iu window) we mustnt change the cursor, it must remain with the look that the element being interacted wants
+    if (next_hot && ui->under_the_mouse != next_hot && !ui->interacting_with)
     {
         assert(next_hot->cursor.type == ui_cursor_type::os); //TODO(fran): custom cursors
         OS::cursor_style cursor = next_hot->cursor.os_cursor;
@@ -1795,7 +1692,7 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, ui_input* 
             {
                 auto data = element->data.background;
 
-                if (IsUnclicked(input->keys[input_key::right_mouse]))
+                if (IsUnclicked(input->keys[iu::ui_key::MouseRight]))
                     safe_call(data.OnUnRClick.action, ui->under_the_mouse, data.OnUnRClick.context);
 
             } break;
@@ -1836,7 +1733,7 @@ void UnregisterGlobalHotkey(ui_state* ui, ui_hotkey hotkey)
             _unreg_hk* unreg = (decltype(unreg))args; 
             unreg->ret = UnregisterSystemGlobalHotkey(unreg->wnd, unreg->id);
         }
-        , iu::get_state()->io_thread, (ULONG_PTR)&unreg);
+        , _OS::thread_setup.io_thread, (ULONG_PTR)&unreg);
     
     while (unreg.ret == -10) {}
 
@@ -1855,7 +1752,7 @@ b32 RegisterGlobalHotkey(ui_state* ui, ui_hotkey hotkey, ui_action on_hotkey_tri
             _reg_hk* reg = (decltype(reg))args;
             reg->res = RegisterSystemGlobalHotkey(reg->wnd, *reg->hotkey.hk, reg->hotkey.id); //TODO(fran): we may want to leave the hwnd as nil and say that global hotkeys are gonna be iu global (inside iu_state) & outside the ui_state
         }
-    , iu::get_state()->io_thread, (ULONG_PTR)&reg);
+    , _OS::thread_setup.io_thread, (ULONG_PTR)&reg);
 
     while (reg.res == -10) {}
 
@@ -1912,16 +1809,17 @@ internal void InputProcessing(ui_state* ui, ui_element* next_hot, ui_input* inpu
     UpdateUnderTheMouse(ui, next_hot, input);
     if (ui->interacting_with)
     {
-        if (IsUnclicked(input->keys[input_key::left_mouse]))
+        if (IsUnclicked(input->keys[iu::ui_key::MouseLeft]))
         {
             EndInteraction(ui, input);
         }
         else ContinueInteraction(ui, input);
     }
-    else if (IsClicked(input->keys[input_key::left_mouse]) && next_hot)
+    else if (IsClicked(input->keys[iu::ui_key::MouseLeft]) && next_hot)
     {
         BeginInteraction(ui, next_hot, input);
-        //TODO(fran): OS::capture_mouse()
+        //IMPORTANT NOTE(fran): We only handle interactions for left click, which is what Windows does. For right click handling we only care about the element that was under the mouse when the unrclick event happens.
+            //TODO(fran): this may need to be specialized for different OSs which handle right click interactions (if there are any)
     }
     if(IsWindowVisible(ui->wnd))//TODO(fran): HACK: I had to add this condition to cover the stupid edge case where the user is registering a hotkey but does not release the keys and causes a hotkey triggered event to happen. Strange things happened in that case which I couldnt quite decipher and the end result was that the hotkey wouldnt work until the user clicked on the screen
         UpdateKeyboardFocus(ui, input);
@@ -2017,53 +1915,28 @@ internal rc2 GetImageRc(rc2 bounds, f32 imgW, f32 imgH)
 
 internal void RenderImage(iu::ui_renderer* r, ui_image image, rc2 placement, v4 col)
 {
-    auto renderer = r->renderer2D.deviceContext;
-
-    D2D1_BITMAP_PROPERTIES1 props = {
-        .pixelFormat = {DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED }, //NOTE(fran): direct2d only works with premultiplied alpha
-        .dpiX = 0, //TODO(fran): dpi
-        .dpiY = 0,
-        .bitmapOptions = D2D1_BITMAP_OPTIONS_NONE,
-        .colorContext = nil, //TODO(fran)
-    };
-
     switch (image.type)
     {
     case ui_image_type::img:
     {
-        //TODO(fran): hash table to store already generated images
-        ID2D1Bitmap1* img; defer{ d3d_SafeRelease(img); };
-        TESTHR(renderer->CreateBitmap({ image.img->w,image.img->h }, image.img->mem, image.img->w * (image.img->bpp / 8), props, &img)
-            , "Failed to create Direct2D bitmap");
+        iu::ui_texture tex = iu::CreateTexture(r, image.img->mem, image.img->w, image.img->h, image.img->w * (image.img->bpp / 8), image.img->bpp);
+        defer{ d3d_SafeRelease(tex.img); }; //TODO(fran): remove
 
         rc2 imgrc = GetImageRc(placement, image.img->w, image.img->h);
-
-        renderer->DrawBitmap(img, rc2_to_D2DRECT(imgrc));
+        RenderTexture(r, tex, imgrc);
     } break;
     case ui_image_type::mask:
     {
-        ID2D1Bitmap1* img; defer{ d3d_SafeRelease(img); };
-        TESTHR(renderer->CreateBitmap({ image.img->w,image.img->h }, image.img->mem, image.img->w * (image.img->bpp / 8), props, &img)
-            , "Failed to create Direct2D bitmap");
-
-        ID2D1SolidColorBrush* fg_br{ 0 }; defer{ d3d_SafeRelease(fg_br); };
-        auto brush_props = D2D1::BrushProperties(col.a);
-        renderer->CreateSolidColorBrush((D2D1_COLOR_F*)&col, &brush_props, &fg_br);
-
-        auto oldmode = renderer->GetAntialiasMode(); defer{ renderer->SetAntialiasMode(oldmode); }; //NOTE(fran): FillOpacityMask requires Aliased Mode
-        renderer->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
+        iu::ui_texture tex = iu::CreateTexture(r, image.img->mem, image.img->w, image.img->h, image.img->w * (image.img->bpp / 8), image.img->bpp);
+        defer{ d3d_SafeRelease(tex.img); };
 
         rc2 imgrc = GetImageRc(placement, image.img->w, image.img->h);
-
-        renderer->FillOpacityMask(img, fg_br, rc2_to_D2DRECT(imgrc));
+        
+        iu::RenderTextureOpacityMask(r, tex, imgrc, col);
     } break;
     case ui_image_type::render_commands:
     {
-        ID2D1SolidColorBrush* fg_br{ 0 }; defer{ d3d_SafeRelease(fg_br); };
-        auto brush_props = D2D1::BrushProperties(col.a);
-        renderer->CreateSolidColorBrush((D2D1_COLOR_F*)&col, &brush_props, &fg_br);
-
-        image.render_commands.commands(renderer, fg_br, placement, image.render_commands.context);
+        image.render_commands.commands(r, col, placement, image.render_commands.context);
     } break;
     case ui_image_type::none: {} break;
 #ifdef DEBUG_BUILD //TODO(fran): does adding the default case impact performance?
@@ -2548,11 +2421,13 @@ sz2 GetSubelementWH(sz2 bounds, element_sizing_desc2 sz_desc, const ui_subelemen
 //TODO(fran): separate resize & getbottom functions with if constexpr (do_resize), we're probably gonna need to use templates: template <b32 do_resize>. Do it after the whole thing has been completely implemented and debugged, debugging templates is never fun
 //TODO(fran): support for placing things inside others. That would be a good use for the 'next' pointer inside ui_element, to function as 'childs' (better change the name), and have there a sizer that receives the rectangle of the parent element as the bounds
 //TODO(fran): can I somehow avoid passing the veil_ui? I simply need it to measure some fonts
-internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* element, b32 do_resize) 
+internal v2 GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* element, b32 do_resize) 
 {
     //TODO(fran): while loop over element->next in order to have individual root elements, may be better as a separate specific function, since the rectangles should be handled separately for each root
 
     //TODO(fran): left, right and center alignment, maybe too top and bottom
+    
+    //TODO(fran): here we have the answer to our 'rendering in order' problem, if we measure elements using the element list we can give each element on the same loop iteration the same depth value, later we can use a vector to store each separate element type that shares the same rendering code and render in a straight for loop fashion, calling the same render function for all elements of the same type and they will be correctly ordered/occluded by using their depth information
 
     switch (element->type) {
         case ui_type::sizer:
@@ -2583,7 +2458,7 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
                                 f32 w = GetElementW(bounds.wh, superchild->sizing_desc, child, ui), h = bounds.h;
 
                                 rc2 new_bounds{ 0,0,w,h };
-                                total_w += _GetElementBottomRight(ui, new_bounds, child, false).x;
+                                total_w += GetElementBottomRight(ui, new_bounds, child, false).x;
 
                                 //child = child->next;
                             }
@@ -2613,7 +2488,7 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
 
                         rc2 new_bounds{ xy.x,xy.y,w,h };
 
-                        res.y = maximum(res.y, _GetElementBottomRight(ui, new_bounds, child, do_resize).y); //TODO(fran): I think this is wrong, we're possibly returning y values smaller than bounds.bottom(), a better idea would be maximum(res.y,bounds.bottom()) after the end of the loop. We could also provide the current "wrong" behaviour as an additional flag
+                        res.y = maximum(res.y, GetElementBottomRight(ui, new_bounds, child, do_resize).y); //TODO(fran): I think this is wrong, we're possibly returning y values smaller than bounds.bottom(), a better idea would be maximum(res.y,bounds.bottom()) after the end of the loop. We could also provide the current "wrong" behaviour as an additional flag
 
                         xy.x += w;
                         res.x = xy.x;
@@ -2656,7 +2531,7 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
 
 #if 0 //TODO(fran): I have the feeling I should use this path
                                 rc2 new_bounds{ 0,0,w,h };
-                                total_h += _GetElementBottomRight(ui, new_bounds, child, false).y;
+                                total_h += GetElementBottomRight(ui, new_bounds, child, false).y;
 #else
                                 total_h += h;
 #endif
@@ -2692,7 +2567,7 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
 
                         rc2 new_bounds{ xy.x,xy.y,w,h };
 
-                        if(do_resize) _GetElementBottomRight(ui, new_bounds, child, do_resize);
+                        if(do_resize) GetElementBottomRight(ui, new_bounds, child, do_resize);
 
                         xy.y += h; //NOTE(fran): interstingly I dont go check my childs when looking for the bottom
 
@@ -2790,7 +2665,7 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
 
                     rc2 new_bounds{ xy.x,xy.y,w,h };
 
-                    xy.y = maximum(xy.y, _GetElementBottomRight(ui, new_bounds, child, do_resize).y); //TODO(fran): the max check seems unnecessary at best and wrong when elements go beyond the height of the bounds
+                    xy.y = maximum(xy.y, GetElementBottomRight(ui, new_bounds, child, do_resize).y); //TODO(fran): the max check seems unnecessary at best and wrong when elements go beyond the height of the bounds
                 }
                 superchild = superchild->next;
             }
@@ -2816,7 +2691,7 @@ internal v2 _GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* e
                 //Resize childs (childs are placed inside the bounds of the element)
                 assert(child->type == ui_type::sizer);
                 ui_element* parent = element;
-                _GetElementBottomRight(ui, parent->placement, child, do_resize);
+                GetElementBottomRight(ui, parent->placement, child, do_resize);
             }
 
             return xy;
@@ -2829,7 +2704,7 @@ internal v2 ResizeElement(ui_state* ui, rc2 bounds, ui_element* element)
     v2 res;
     if (ui->is_context_menu)
     {
-        sz2 new_bounds = _GetElementBottomRight(ui, { 0,0,F32MAX,F32MAX }, element, true);
+        sz2 new_bounds = GetElementBottomRight(ui, { 0,0,F32MAX,F32MAX }, element, true);
         if ((i32)ui->placement.w != (i32)new_bounds.w || (i32)ui->placement.h != (i32)new_bounds.h)
         {
             OS::MoveWindow(ui->wnd, rc2_from(OS::GetWindowScreenRc(ui->wnd).xy, new_bounds));
@@ -2837,7 +2712,7 @@ internal v2 ResizeElement(ui_state* ui, rc2 bounds, ui_element* element)
         }
         res = new_bounds;
     }
-    else res = _GetElementBottomRight(ui, bounds, element, true);
+    else res = GetElementBottomRight(ui, bounds, element, true);
     return res;
 }
 
@@ -2921,7 +2796,7 @@ internal void UIProcessing(ui_state* ui)
         
         //assert(ui->scaling == GetNewScaling(ui)); //TODO(fran): use GetNewScaling(ui), this assertion fails cause it actually updates faster than ui->scaling
 
-        utf8 scalingstr[20]; snprintf((char*)scalingstr, ArrayCount(scalingstr), "scaling:(%.2f)\n", GetNewScaling(ui)); OutputDebugStringA((char*)scalingstr);
+        utf8 scalingstr[20]; snprintf((char*)scalingstr, ArrayCount(scalingstr), "scaling:(%.2f)\n", iu::GetNewScaling(ui)); OutputDebugStringA((char*)scalingstr);
 
         if (ui->scaling != ui->_last_scaling)
         {
@@ -3130,15 +3005,13 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
             f32 l = minimum(placement.w, placement.h);
             rc2 square = get_centered_rc(placement, l, l);
             f32 line_width = 1;
-
-            auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
-            auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
-            renderer2D->SetAntialiasMode(antialias_mode);
+            
+            auto oldantialias_mode = SetAntialiasing(r, AA::off); defer{ SetAntialiasing(r, oldantialias_mode);};
 
             f32 h = square.y + square.h * .5f;
             v2 p1 = {.x = square.x, .y = h };
             v2 p2 = {.x = square.right(), .y = h };
-            renderer2D->DrawLine(*(D2D1_POINT_2F*)&p1, *(D2D1_POINT_2F*)&p2, brush, line_width);
+            Line(r, p1, p2, line_width, col);
         }},
     };
 
@@ -3152,9 +3025,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
             rc2 square = get_centered_rc(placement, l, l);
             f32 line_width = 1.0f;
 
-            auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
-            auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
-            renderer2D->SetAntialiasMode(antialias_mode); //NOTE(fran): for this 1pixel wide drawings aliased mode is best
+            auto oldantialias_mode = SetAntialiasing(r, AA::off); defer{ SetAntialiasing(r, oldantialias_mode); };
 
             if (OS::IsWindowMaximized(ui->wnd))
             {
@@ -3167,10 +3038,10 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                 square = round_rc(square);
                 square2 = round_rc(square2);
 
-                renderer2D->DrawRectangle(rc2_to_D2DRECT(square), brush, line_width);
+                RectangleOutline(r, square, line_width, col);
 
                 rc2 bounds = placement, clipout_area = square;
-                { //NOTE(fran): manual clipping since Direct2D sucks hard
+                {
                     f32 correctionY = 5; //TODO(fran): quick HACK: the top of the square doesnt get rendered in aliased mode, so we had to manually enlargen the clipping region
                     rc2 top_strip =
                     {
@@ -3179,10 +3050,9 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                         .w = bounds.w,
                         .h = distance(bounds.y, clipout_area.y) + correctionY,
                     };
-                    renderer2D->PushAxisAlignedClip(rc2_to_D2DRECT(top_strip), antialias_mode);
-                    defer{ renderer2D->PopAxisAlignedClip(); };
-
-                    renderer2D->DrawRectangle(rc2_to_D2DRECT(square2), brush, line_width);
+                    PushClipRegion(r, top_strip); defer{ PopClipRegion(r); };
+                    
+                    RectangleOutline(r, square2, line_width, col);
                 }
                 {
                     rc2 right_strip =
@@ -3192,16 +3062,15 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                         .w = distance(bounds.right(), clipout_area.right()),
                         .h = bounds.h,
                     };
-                    renderer2D->PushAxisAlignedClip(rc2_to_D2DRECT(right_strip), antialias_mode);
-                    defer{ renderer2D->PopAxisAlignedClip(); };
+                    PushClipRegion(r, right_strip); defer{ PopClipRegion(r); };
 
-                    renderer2D->DrawRectangle(rc2_to_D2DRECT(square2), brush, line_width);
+                    RectangleOutline(r, square2, line_width, col);
                 }
             }
             else
             {
                 square = round_rc(square);
-                renderer2D->DrawRectangle(rc2_to_D2DRECT(square), brush, line_width);
+                RectangleOutline(r, square, line_width, col);
             }
         }},
     };
@@ -3215,9 +3084,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
             rc2 square = get_centered_rc(placement, l, l);
             f32 line_width = 1;
 
-            auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
-            auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
-            renderer2D->SetAntialiasMode(antialias_mode);
+            auto oldantialias_mode = SetAntialiasing(r, AA::off); defer{ SetAntialiasing(r, oldantialias_mode); };
 
             square = round_rc(square);
 
@@ -3227,8 +3094,8 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
             v2 p3 = square.top_right();
             v2 p4 = square.bottom_left();
 
-            renderer2D->DrawLine(*(D2D1_POINT_2F*)&p1, *(D2D1_POINT_2F*)&p2, brush, line_width);
-            renderer2D->DrawLine(*(D2D1_POINT_2F*)&p3, *(D2D1_POINT_2F*)&p4, brush, line_width);
+            Line(r, p1, p2, line_width, col);
+            Line(r, p3, p4, line_width, col);
         }},
     };
 
@@ -3261,7 +3128,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         //TODO(fran): this is something the Iu createwindow handler should do for us
         if (ui->context_menu)
         {
-            AcquireUIState(ui->context_menu, ui->context_menu->wnd);
+            iu::AcquireUIState(ui->context_menu, ui->context_menu->wnd);
         }
         else
         {
@@ -3329,9 +3196,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
 
                 //TODO(fran): FIX: does not display correctly on different resolutions
 
-                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
-                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
-                renderer2D->SetAntialiasMode(antialias_mode);
+                auto oldantialias_mode = SetAntialiasing(r, AA::off); defer{ SetAntialiasing(r, oldantialias_mode); };
 
                 f32 d = square.w * .3f;
                 f32 half_d = maximum(d * .5f, 1.f);
@@ -3350,10 +3215,10 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                 v2 p3 = p2;
                 v2 p4 = { p3.x, square.y + square.h * .75f + line_width_small / 2 };
 
-                renderer2D->DrawRectangle(rc2_to_D2DRECT(square), brush, line_width);
+                RectangleOutline(r, square, line_width, col);
 
-                renderer2D->DrawLine(v2_to_D2DPOINT(p1), v2_to_D2DPOINT(p2), brush, line_width_small);
-                renderer2D->DrawLine(v2_to_D2DPOINT(p3), v2_to_D2DPOINT(p4), brush, line_width_small);
+                Line(r, p1, p2, line_width_small, col);
+                Line(r, p3, p4, line_width_small, col);
                 //TODO(fran): clean up this drawing code
             }},
         };
@@ -3367,14 +3232,12 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                 rc2 square = get_centered_rc(placement, l, l);
                 f32 line_width = contextmenu_img_line_width(l);
 
-                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
-                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
-                renderer2D->SetAntialiasMode(antialias_mode);
+                auto oldantialias_mode = SetAntialiasing(r, AA::off); defer{ SetAntialiasing(r, oldantialias_mode); };
 
                 f32 h = square.y + square.h;
                 v2 p1 = {.x = square.x, .y = h };
                 v2 p2 = {.x = square.right(), .y = h };
-                renderer2D->DrawLine(v2_to_D2DPOINT(p1), v2_to_D2DPOINT(p2), brush, line_width);
+                Line(r, p1, p2, line_width, col);
             }},
         };
 
@@ -3388,16 +3251,14 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                 f32 line_width = contextmenu_img_line_width(l);
                 f32 line_width_small = maximum(line_width * .5f, 1.f);
 
-                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
-                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
-                renderer2D->SetAntialiasMode(antialias_mode);
+                auto oldantialias_mode = SetAntialiasing(r, AA::off); defer{ SetAntialiasing(r, oldantialias_mode); };
 
                 f32 d = square.w * .25f;
                 square = inflate_rc(square, -d);
 
                 square = round_rc(square);
 
-                renderer2D->DrawRectangle(rc2_to_D2DRECT(square), brush, line_width);
+                RectangleOutline(r, square, line_width, col);
             }},
         };
 
@@ -3410,9 +3271,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                 rc2 square = get_centered_rc(placement, l, l);
                 f32 line_width = contextmenu_img_line_width(l);
 
-                auto oldaliasmode = renderer2D->GetAntialiasMode(); defer{ renderer2D->SetAntialiasMode(oldaliasmode); };
-                auto antialias_mode = D2D1_ANTIALIAS_MODE_ALIASED;
-                renderer2D->SetAntialiasMode(antialias_mode);
+                auto oldantialias_mode = SetAntialiasing(r, AA::off); defer{ SetAntialiasing(r, oldantialias_mode); };
 
                 square = round_rc(square);
 
@@ -3422,8 +3281,8 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                 v2 p3 = square.top_right() + v2{.5f,-.5f};
                 v2 p4 = square.bottom_left();
                 //renderer2D->FillGeometry()
-                renderer2D->DrawLine(v2_to_D2DPOINT(p1), v2_to_D2DPOINT(p2), brush, line_width);
-                renderer2D->DrawLine(v2_to_D2DPOINT(p3), v2_to_D2DPOINT(p4), brush, line_width);
+                Line(r, p1, p2, line_width, col);
+                Line(r, p3, p4, line_width, col);
             }},
         };
 

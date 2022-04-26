@@ -1,8 +1,7 @@
 #pragma once
 
 #define temp_s(c_string) {.chars = c_string, .cnt=s_cnt(c_string), .cnt_allocd=0}
-//TODO(fran): HACK: had to fix it utf8 cause I could quite find the way to make a const_cast for any type
-#define const_temp_s(c_string) {.chars = const_cast<utf8*>(c_string), .cnt=s_cnt(c_string), .cnt_allocd=0}
+#define const_temp_s(c_string) {.chars = const_cast<remove_const<remove_reference<decltype(*c_string)>::type>::type*>(c_string), .cnt=s_cnt(c_string), .cnt_allocd=0}
 
 //TODO(fran): use the string as the type, eg s8, and retrieve its inner type (utf8) from there
 #define stack_s(type, char_cnt){.chars=(type::value_type*)alloca(char_cnt*sizeof(type::value_type)), .cnt=0, .cnt_allocd=char_cnt}
@@ -107,13 +106,14 @@ struct sN {
 
 	sN<T>& operator+=(const T* s)
 	{
-		u64 add_cnt = s_cnt(s);
-		if (cnt + add_cnt > cnt_allocd) crash();
-		for (u64 i = 0; i < add_cnt ; i++)
-		{
-			chars[cnt++] = s[i];
-		}
-		return *this;
+		sN<T> temp{ .chars = const_cast<T*>(s), .cnt = s_cnt(s) };
+		return *this += temp;
+	}
+
+	sN<T>& operator+=(T c)
+	{
+		sN<T> temp{ .chars = &c, .cnt = 1 };
+		return *this += temp;
 	}
 
 	typedef void* allocator(u64);

@@ -30,6 +30,7 @@ namespace OS { //Custom types common to all OSes
 	enum class cursor_style {
 		arrow = 0, text, hand
 	};
+
 }
 
 #ifdef OS_WINDOWS

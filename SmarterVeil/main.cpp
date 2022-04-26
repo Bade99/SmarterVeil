@@ -90,7 +90,8 @@ global_persistence int _TIMED_tabcnt = 0;
         if (_TIMED_tabcnt == 0) OutputDebugStringA("----------------------\n"); \
     }
 
-//template <typename T> struct add_pointer { T* t; using type = decltype(t); };
+template <typename T> struct remove_const { using type = T; };
+template <typename T> struct remove_const<const T> { using type = T; };
 
 //NOTE: all this template crap is needed in order to be able to use defer
 //INFO: visual studio gives you most of the c++ libs by default in debug builds, and those things are stripped down only for release ones, in which case you gotta manually include the lib

@@ -744,10 +744,7 @@ internal void VeilProcessing(veil_start_data* start_data)
             DispatchMessageW(&msg);
         }
 
-        iu::update_and_render();
-
-        //ProcessMessages(Veil);
-        //SUPER TODO(fran): I have no clue why when the veil is hidden "ProcessMessages(Veil)" spikes GPU usage like crazy, to 50% if it's just hidden, and 20% if it's hidden and we check "if (Veil->ui.show_veil)" before doing render & update to compositor
+        iu::UpdateAndRender();
 
         if (old_show_veil != Veil->ui.show_veil)
         {
