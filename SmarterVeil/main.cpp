@@ -220,7 +220,7 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
     HWND veil = CreateVeilWindow();
     if (!veil) return 0;
 
-    ui_state* veil_ui_wnd = iu::window((OS::window_creation_flags)(OS::window_creation_flags::topmost | OS::window_creation_flags::resizeborder));
+    ui_state* veil_ui_wnd = iu::Window((OS::window_creation_flags)(OS::window_creation_flags::topmost | OS::window_creation_flags::resizeborder));
     if (!veil_ui_wnd->wnd) return 0;
 
     veil_start_data start_data;

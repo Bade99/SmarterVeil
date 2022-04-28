@@ -95,7 +95,7 @@ struct veil_ui_state /* : ui_state */ {
 
     b32 show_veil;
 
-    OS::hotkey_data show_ui_hotkey;
+    iu::ui_hotkey_data show_ui_hotkey;
 };
 
 struct veil_state {
@@ -571,12 +571,11 @@ internal void AcquireVeilUIState(veil_ui_state* res, ui_state* veil_ui_base_stat
 
     res->show_veil = true;
 
-    res->show_ui_hotkey = { 0 };
+    res->show_ui_hotkey = { };
 
     rc2 desktop_rc = OS::GetMouseMonitorRc();
     
     f32 units = 28.f;
-    //f32 _units_to_pixels = GetSystemMetrics(SM_CXMENUCHECK);
     f32 units_to_pixels = OS::GetSystemFontMetrics().h * OS::GetScalingForRc(desktop_rc) / OS::GetScalingForSystem();
     i32 wnd_w = units_to_pixels * units;
     i32 wnd_h = wnd_w * 9.5f / 16.f;

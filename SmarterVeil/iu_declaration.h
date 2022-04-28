@@ -2,7 +2,9 @@
 
 namespace iu{
 
-enum ui_key : u8{ //TODO(fran): convert to namespace + annonymous enum so this names dont leak into the codebase, or enum class if possible
+    //TODO(fran): I'd really prefer to make the whole Iu solution into one single .h file but I havent found a way to do it yet
+
+enum class ui_key : u8{ //TODO(fran): convert to namespace + annonymous enum so this names dont leak into the codebase, or enum class if possible
     MouseLeft /*Left Click*/, MouseRight /*Right Click*/, MouseMiddle /*Scrollwheel/Middlebutton Click*/, MouseExtra1, MouseExtra2 /*Extra mouse buttons, usually used for forwards/backwards navigation (eg in a browser)*/,
     Esc,
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24,
@@ -18,12 +20,22 @@ enum ui_key : u8{ //TODO(fran): convert to namespace + annonymous enum so this n
     PageUp, PageDown, Home, End, Insert /*TODO(fran): InsertLock instead?*/, 
     DeleteForward /*Delete next character*/, DeleteBackward /*Backspace*/ /*Delete previous character*/,
     Space, Enter,
-    PrintScreen,
+    PrintScreen /*TODO(fran): Windows: we arent receiving this key. I think I read this one only sends WM_KEYUP?*/, Pause /*this is NOT for pausing media*/,
     ContextMenu /*Windows: acts as a right click, requesting to open the context menu*/,
     VolumeUp, VolumeDown, VolumeMute,
     MediaNextTrack, MediaPrevTrack, MediaPlayPause, MediaStop,
 
     _COUNT,
+
+    _MOUSELAST = MouseExtra2,
+    //_MODFIRST = Ctrl, _MODLAST = OS,
+};
+
+enum ui_key_modifiers : u8 {
+    Ctrl = 1 << 0,
+    Shift = 1 << 1,
+    Alt = 1 << 2 /*Win: Alt, Mac: Option*/,
+    OS = 1 << 3 /*Win: Windows Key, Mac: Command Key*/,
 };
 
 enum class ui_key_state : u8 {
@@ -39,6 +51,23 @@ enum class ui_key_state : u8 {
         //Windows: we recieve a click message for the first click, and a doubleclick msg for the second click, therefore we should interpret 'doubleclicked' also as 'clicked' for the people that dont handle doubleclick
 
     //TODO(fran): we could handle this on our side, have the ui code interpret very close clicks as a double click, that'd be easier to port to other OSs that may not do the same as Windows
+};
+
+struct ui_hotkey_data {
+    ui_key key;
+    ui_key_modifiers mods;
+
+    b32 is_valid_hotkey()
+    {
+        b32 res = this->key > ui_key::_MOUSELAST;// || this->mods;
+        return res;
+    }
+
+    b32 operator!=(ui_hotkey_data hotkey_to_compare)
+    {
+        b32 res = this->key != hotkey_to_compare.key || this->mods != hotkey_to_compare.mods;
+        return res;
+    }
 };
 
 enum class ui_event_type {
@@ -59,7 +88,7 @@ struct ui_event {
     union {
         struct { v2 p; v2 screenP; } mousep; //TODO(fran): some day we'll need to handle multi-touch
         struct { v2 wheel; } mousewheel;
-        struct { ui_key button; ui_key_state state; } mousebutton, tray, key; //TODO(fran): the tray event should store the screenmouse position to allow for opening context menues from there //TODO(fran): analogue key for controllers. The mouse should also be analogue, in case a pen is used
+        struct { ui_key button; ui_key_state state; LPARAM os;/*TODO(fran): REMOVE*/ } mousebutton, tray, key; //TODO(fran): the tray event should store the screenmouse position to allow for opening context menues from there //TODO(fran): analogue key for controllers. The mouse should also be analogue, in case a pen is used
         struct { utf8 c; } text; //TODO(fran): we may wanna make this a little bigger, eg utf8 c[8], in order to reduce the number of events in the queue
         struct { f32 dpi; } dpi; //TODO(fran): remove
         struct { u8 _; } close;
@@ -72,6 +101,7 @@ declaration void PushEventMouseWheel(OS::window_handle wnd, v2 wheelStep);
 declaration void PushEventMouseButton(OS::window_handle wnd, ui_key mousebutton, ui_key_state state);
 declaration void PushEventTray(OS::window_handle wnd, ui_key mousebutton, ui_key_state state);
 declaration void PushEventKey(OS::window_handle wnd, ui_key key, ui_key_state state);
+declaration void PushEventKey(OS::window_handle wnd, ui_key key, ui_key_state state, LPARAM os);
 declaration void PushEventText(OS::window_handle wnd, utf8 c);
 declaration void PushEventDpi(OS::window_handle wnd, f32 dpi /*a dpi of 1.0 means no scaling (100%)*/);
 declaration void PushEventClose(OS::window_handle wnd);

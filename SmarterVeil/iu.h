@@ -209,11 +209,10 @@ struct ui_input { //user input
     b32 close;//NOTE(fran): the os/user can request the app to be closed through means outside of the ui's control
     v2 mouseP;//INFO(fran): mouse coordinates must be relative to the window area (client area on Windows) and with x-axis going right and y-axis going down
     v2 screen_mouseP;
-    iu::ui_key_state keys[iu::ui_key::_COUNT];
     f32 mouseVScroll; //NOTE(fran): indicates the number of units to scroll (eg a value of 1 means to scroll 1 unit), the unit will be determined by whoever handles the scroll
     f32 mouseHScroll; //TODO(fran): join with mouseVScroll into a v2?
 
-    OS::hotkey_data hotkey; //TODO(fran): this should be replaceable by keyboard input
+    iu::ui_key hot_key; //last clicked key in this frame
     i32 global_hotkey_id; //System wide hotkey, received from the OS at any time
 
     struct {
@@ -221,7 +220,8 @@ struct ui_input { //user input
         //TODO(fran): store screenmouseP
     } tray;
 
-    utf8 _text[100]; //TODO(fran): this may be too small for input from the IME
+    iu::ui_key_state keys[(u32)iu::ui_key::_COUNT];
+    utf8 _text[128]; //TODO(fran): this may be too small for input from the IME
     s8 text; //TODO(fran): how to automatically store the byte array (_text) inside the s8?
 
     //TODO(fran): f32 dt; or calculate dt on our own inside uiprocessing
@@ -402,7 +402,7 @@ struct ui_string {
 };
 
 struct ui_hotkey {
-    OS::hotkey_data* hk;
+    iu::ui_hotkey_data* hk;
     i32 id; //NOTE(fran): unique id per hotkey
 };
 
@@ -494,7 +494,7 @@ struct ui_element {
 
             ui_image image;
             ui_string text;
-            OS::hotkey_data hotkey;
+            iu::ui_hotkey_data hotkey;
         } contextmenu_button;
         struct {
             slider_theme theme;
@@ -659,7 +659,6 @@ internal language_manager* AcquireLanguageManager() //TODO(fran): maybe this sho
 declaration internal void UIProcessing(ui_state* ui);
 
 namespace iu {
-    declaration internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, b32 is_context_menu);
     declaration internal void ReleaseUIState(ui_state* ui);
 
     struct iu_state {
@@ -729,6 +728,10 @@ namespace iu {
     {
         GetState()->events.push({ .type = ui_event_type::Key, .destination = wnd, .key = {.button = key, .state = state} });
     }
+    definition void PushEventKey(OS::window_handle wnd, ui_key key, ui_key_state state, LPARAM os)
+    {
+        GetState()->events.push({ .type = ui_event_type::Key, .destination = wnd, .key = {.button = key, .state = state, .os = os} });
+    }
     definition void PushEventText(OS::window_handle wnd, utf8 c)
     {
         GetState()->events.push({ .type = ui_event_type::Text, .destination = wnd, .text = {.c = c} });
@@ -749,7 +752,7 @@ namespace iu {
     internal void PreAdjustInput(ui_input* ui_input)
     {
         ui_input->close = false;
-        ui_input->hotkey = { 0 };
+        ui_input->hot_key = { };
         ui_input->global_hotkey_id = 0;//TODO(fran): we could also send the full info, id+vk+mods
         ui_input->mouseVScroll = 0;
         ui_input->mouseHScroll = 0;
@@ -789,7 +792,7 @@ namespace iu {
         } break;
         case ui_event_type::MouseButton:
         {
-            ui_input.keys[event.mousebutton.button] = event.mousebutton.state;
+            ui_input.keys[(u32)event.mousebutton.button] = event.mousebutton.state;
         } break;
         //case WM_LBUTTONDOWN:
         //{
@@ -797,39 +800,11 @@ namespace iu {
         //} break;
         case ui_event_type::Key:
         {
-            ui_input.keys[event.key.button] = event.key.state;
+            ui_input.keys[(u32)event.key.button] = event.key.state;
+
+            if (event.key.state == iu::ui_key_state::clicked)
+                ui_input.hot_key = event.key.button;
         } break;
-#if 0
-        case WM_SYSKEYDOWN:
-        case WM_KEYDOWN:
-        {
-            b32 ctrl_is_down = HIBYTE(GetKeyState(VK_CONTROL));
-            b32 alt_is_down = HIBYTE(GetKeyState(VK_MENU));
-            b32 shift_is_down = HIBYTE(GetKeyState(VK_SHIFT));
-
-            u8 vk = (u8)msg.wParam;
-
-            //TODO(fran): keyboard keys should also have clicked, pressed and unclicked states
-
-            switch (vk) {
-            case VK_LWIN: case VK_RWIN:
-            case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
-            case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
-            case VK_MENU:
-            case VK_F12:
-            {
-                ui_input.hotkey.vk = (u8)0;
-                ui_input.hotkey.translation_nfo = 0;
-            } break;
-            default:
-            {
-                ui_input.hotkey.vk = (u8)vk;
-                ui_input.hotkey.translation_nfo = msg.lParam;
-            } break;
-            }
-            ui_input.hotkey.mods = (ctrl_is_down ? MOD_CONTROL : 0) | (alt_is_down ? MOD_ALT : 0) | (shift_is_down ? MOD_SHIFT : 0);
-        } break;
-#endif
         case ui_event_type::SystemGlobalHotkey:
         {
             ui_input.global_hotkey_id = event.systemwidehotkey.id;
@@ -888,6 +863,20 @@ namespace iu {
                     }
         }
 
+#ifdef DEBUG_BUILD
+        auto w = OS::GetForegroundWindow();
+        for (auto& a : actives)
+            for (auto& ui : a)
+                if (ui->wnd == w) 
+                {
+                    ui->input.text += (utf8)0; defer{ ui->input.text.cnt--; }; //append null terminator for the Windows functions to not implode
+                    auto out = _OS::convert_to_s16(ui->input.text); defer{ _OS::free_small_mem(out.chars); };
+                    OutputDebugStringW((LPCWSTR)out.chars); OutputDebugStringW(L"\n");
+                    goto skip;
+                }
+        skip:
+#endif
+
         //TODO(fran): one frame initialization for global ui things
         //Temporary Arena initialization
         auto lang_mgr = state->windows.active.arr[0]->LanguageManager; //TODO(fran): lang mgr should be global and not obtained through a window in this hacky way
@@ -898,44 +887,13 @@ namespace iu {
                 UIProcessing(ui);
     }
 
-    internal OS::window_handle _createwindow(OS::window_creation_flags creation_flags)
-    {
-        OS::window_handle res;
-        //TODO(fran): OS independent, not only for Windows' crap
-        //TODO(fran): looks like a combination of AttachThreadInput & QueueUserAPC could solve all my problems
-        auto state = GetState();
-
-        //TODO(fran): remove the b32 done and check the wnd handle?
-        struct _create_wnd { OS::window_handle wnd; OS::window_creation_flags flags; b32 done; };
-
-        volatile _create_wnd create_wnd{ .wnd = {}, .flags = creation_flags, .done = false };
-
-        //TODO(fran): instead of doing this crazy stuff I could hack it, do a SendMessage to a hidden window we create on startup from the other thread & that lives through the entirety of the program
-
-        ::QueueUserAPC(
-            [](ULONG_PTR args) {
-                _create_wnd* create_wnd = (decltype(create_wnd))args;
-                create_wnd->wnd = OS::Window(create_wnd->flags);
-                create_wnd->done = true;
-            }
-        , _OS::thread_setup.io_thread, (ULONG_PTR)&create_wnd);
-
-        while (!create_wnd.done) {}
-
-        res = *(OS::window_handle*)(&create_wnd.wnd); //removing volatile before being able to copy to a non volatile, this is so dumb
-
-        assert(res);
-
-        return res;
-    }
-
     internal f32 GetNewScaling(ui_state* ui)
     {
         f32 res = OS::GetScalingForWindow(ui->wnd);
         return res;
     }
 
-    definition internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, b32 is_context_menu = false/*TODO(fran): this is kinda pointless, we could create a ui_element that resizes the window it's in based on the size of its childs*/)
+    internal void AcquireUIState(ui_state* res, OS::window_handle ui_wnd, b32 is_context_menu = false/*TODO(fran): this is kinda pointless, we could create a ui_element that resizes the window it's in based on the size of its childs*/)
     {
         res->wnd = ui_wnd;
         res->interacting_with = nil;
@@ -995,13 +953,14 @@ namespace iu {
         ui->permanent_arena = { 0 };
 
         iu::ReleaseRenderer(&ui->renderer);
+        //TODO(fran): destroy the window_handle
     }
 
-    internal ui_state* window(OS::window_creation_flags creation_flags)
+    internal ui_state* Window(OS::window_creation_flags creation_flags)
     {
         auto state = GetState();
         ui_state* res = push_type(&state->arena, ui_state); //TODO(fran): zeroing required?
-        auto wnd = _createwindow(creation_flags); assert(wnd);
+        auto wnd = OS::Window(creation_flags); assert(wnd);
 
         AcquireUIState(res, wnd, false); //TODO(fran): we may wanna just return the window handle and allow the user to attach its state later?
 
@@ -1010,11 +969,11 @@ namespace iu {
         return res;
     }
 
-    definition internal ui_state* window_contextmenu()
+    definition internal ui_state* WindowContextmenu()
     {
         auto state = GetState();
         ui_state* res = push_type(&state->arena, ui_state); //TODO(fran): zeroing required?
-        auto wnd = _createwindow(OS::window_creation_flags::contextmenu); assert(wnd);
+        auto wnd = OS::Window(OS::window_creation_flags::contextmenu); assert(wnd);
 
         AcquireUIState(res, wnd, true);
 
@@ -1265,7 +1224,7 @@ struct contextmenu_button_creation_args {
     contextmenu_button_theme* theme;
     ui_image image;
     ui_string text;
-    OS::hotkey_data hotkey; //TODO(fran): should be a pointer
+    iu::ui_hotkey_data hotkey; //TODO(fran): should be a pointer
     ui_action on_unclick;
     ui_action on_mousehover;
     void* context;
@@ -1358,7 +1317,7 @@ internal ui_element* HPad(memory_arena* arena)
 struct hotkey_creation_args {
     memory_arena* arena;
     hotkey_theme* theme;
-    OS::hotkey_data* hotkey_value;
+    iu::ui_hotkey_data* hotkey_value;
     ui_string placeholder_text;
     ui_cursor cursor;
     ui_action on_hotkey;
@@ -1572,7 +1531,7 @@ internal void BeginInteraction(ui_state* ui, ui_element* next_hot, ui_input* inp
             auto& data = element->data.button;
 
             //TODO(fran): quick HACK: make it official whether we are currently working with left or right click
-            if (IsDoubleclicked(input->keys[iu::ui_key::MouseLeft]))
+            if (IsDoubleclicked(input->keys[(u32)iu::ui_key::MouseLeft]))
                 safe_call(data.OnDoubleClick.action, element, data.OnDoubleClick.context);
             else 
                 safe_call(data.OnClick.action, element, data.OnClick.context);
@@ -1581,7 +1540,7 @@ internal void BeginInteraction(ui_state* ui, ui_element* next_hot, ui_input* inp
         {
             auto& data = element->data.background;
             //TODO(fran): same quick HACK
-            if (IsDoubleclicked(input->keys[iu::ui_key::MouseLeft]))
+            if (IsDoubleclicked(input->keys[(u32)iu::ui_key::MouseLeft]))
                 safe_call(data.OnDoubleClick.action, element, data.OnDoubleClick.context);
             else
                 safe_call(data.OnClick.action, element, data.OnClick.context);
@@ -1692,7 +1651,7 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, ui_input* 
             {
                 auto data = element->data.background;
 
-                if (IsUnclicked(input->keys[iu::ui_key::MouseRight]))
+                if (IsUnclicked(input->keys[(u32)iu::ui_key::MouseRight]))
                     safe_call(data.OnUnRClick.action, ui->under_the_mouse, data.OnUnRClick.context);
 
             } break;
@@ -1724,41 +1683,42 @@ internal void OnClose(ui_state* ui, ui_input* input)
 
 void UnregisterGlobalHotkey(ui_state* ui, ui_hotkey hotkey)
 {
-    //NOTE(fran): both Register & Unregister global hotkey functions need to be called from the input thread since hotkey msgs are posted to the thread that called the functions
-
-    struct _unreg_hk { OS::window_handle wnd; i32 id; b32 ret; } volatile unreg{ .wnd = ui->wnd, .id = hotkey.id, .ret = -10 };
-
-    ::QueueUserAPC( //TODO(fran): in the end SendMessage might simply be a better option save for the caveat of having to define custom messages in the os code
-        [](ULONG_PTR args) {
-            _unreg_hk* unreg = (decltype(unreg))args; 
-            unreg->ret = UnregisterSystemGlobalHotkey(unreg->wnd, unreg->id);
-        }
-        , _OS::thread_setup.io_thread, (ULONG_PTR)&unreg);
+    b32 ret = OS::UnregisterSystemGlobalHotkey(ui->wnd, hotkey.id);
     
-    while (unreg.ret == -10) {}
-
-    if(unreg.ret)
+    if(ret) 
         ui->global_registered_hotkeys[hotkey.id] = {0};
 }
 
 b32 RegisterGlobalHotkey(ui_state* ui, ui_hotkey hotkey, ui_action on_hotkey_triggered, ui_element* element)
 {
+    b32 res;
     UnregisterGlobalHotkey(ui, hotkey);
     
-    struct _reg_hk { OS::window_handle wnd; ui_hotkey hotkey; b32 res; } volatile reg{ .wnd = ui->wnd, .hotkey = hotkey, .res = -10 };
+    res = OS::RegisterSystemGlobalHotkey(ui->wnd, *hotkey.hk, hotkey.id);
 
-    ::QueueUserAPC(
-        [](ULONG_PTR args) {
-            _reg_hk* reg = (decltype(reg))args;
-            reg->res = RegisterSystemGlobalHotkey(reg->wnd, *reg->hotkey.hk, reg->hotkey.id); //TODO(fran): we may want to leave the hwnd as nil and say that global hotkeys are gonna be iu global (inside iu_state) & outside the ui_state
-        }
-    , _OS::thread_setup.io_thread, (ULONG_PTR)&reg);
-
-    while (reg.res == -10) {}
-
-    if (reg.res)
+    if (res)
         ui->global_registered_hotkeys[hotkey.id] = {.on_triggered= on_hotkey_triggered, .element=element, .registration_time=StartCounter()};
-    return reg.res;
+    return res;
+}
+
+//b32 IsModifierKey(iu::ui_key key)
+//{
+//    b32 res = key >= iu::ui_key::_MODFIRST && key <= iu::ui_key::_MODLAST;
+//    return res;
+//}
+
+iu::ui_hotkey_data GetCurrentHotkey(ui_state* ui)
+{
+    iu::ui_hotkey_data res;
+    auto k = ui->input.hot_key;
+    res.key = k; // !IsModifierKey(k) ? k : (decltype(res.key))0;
+    if (res.key == iu::ui_key::A) DebugBreak();
+    res.mods = (iu::ui_key_modifiers)
+                ( (IsDown(ui->input.keys[(u32)iu::ui_key::Ctrl]) && res.key!= iu::ui_key::Ctrl ? iu::ui_key_modifiers::Ctrl : 0)
+                | (IsDown(ui->input.keys[(u32)iu::ui_key::Shift]) && res.key != iu::ui_key::Shift ? iu::ui_key_modifiers::Shift : 0)
+                | (IsDown(ui->input.keys[(u32)iu::ui_key::Alt]) && res.key != iu::ui_key::Alt ? iu::ui_key_modifiers::Alt : 0)
+                | (IsDown(ui->input.keys[(u32)iu::ui_key::OS]) && res.key != iu::ui_key::OS ? iu::ui_key_modifiers::OS : 0) );
+    return res;
 }
 
 internal void UpdateKeyboardFocus(ui_state* ui, ui_input* input)
@@ -1770,13 +1730,14 @@ internal void UpdateKeyboardFocus(ui_state* ui, ui_input* input)
             case ui_type::hotkey:
             {
                 auto& data = element->data.hotkey;
-                if (input->hotkey.has_hotkey())
+                auto hotkey_value = GetCurrentHotkey(ui);
+                if (hotkey_value.is_valid_hotkey())
                 {
-                    if (data.current_hotkey.hk->is_different(input->hotkey))
+                    if (*data.current_hotkey.hk != hotkey_value)
                     {
                         EnableRendering(ui);
                         //TODO(fran): flag for defining system global & application/window global hotkeys (if the window is focused (has kb input) they get triggered even if no keyboard focus is on the element)
-                        *data.current_hotkey.hk = input->hotkey;
+                        *data.current_hotkey.hk = hotkey_value;
                         b32 registered = RegisterGlobalHotkey(ui, data.current_hotkey, data.on_hotkey, element);
                         
                         if (registered)
@@ -1809,13 +1770,13 @@ internal void InputProcessing(ui_state* ui, ui_element* next_hot, ui_input* inpu
     UpdateUnderTheMouse(ui, next_hot, input);
     if (ui->interacting_with)
     {
-        if (IsUnclicked(input->keys[iu::ui_key::MouseLeft]))
+        if (IsUnclicked(input->keys[(u32)iu::ui_key::MouseLeft]))
         {
             EndInteraction(ui, input);
         }
         else ContinueInteraction(ui, input);
     }
-    else if (IsClicked(input->keys[iu::ui_key::MouseLeft]) && next_hot)
+    else if (IsClicked(input->keys[(u32)iu::ui_key::MouseLeft]) && next_hot)
     {
         BeginInteraction(ui, next_hot, input);
         //IMPORTANT NOTE(fran): We only handle interactions for left click, which is what Windows does. For right click handling we only care about the element that was under the mouse when the unrclick event happens.
@@ -2184,7 +2145,7 @@ internal void RenderElement(ui_state* ui, ui_element* element)
 }
 
 internal void TESTRenderMouse(iu::ui_renderer* r, v2 mouseP)
-{ //test draw mouse
+{
     auto font = r->renderer2D.font;
 
     v4 mouse_col = v4{ 1,1,1,1 };
@@ -2209,25 +2170,6 @@ internal void RenderUI(ui_state* ui)
     if constexpr (const b32 render_mouse = false; render_mouse) TESTRenderMouse(&ui->renderer, ui->input.mouseP);
 
     EndRender(&ui->renderer);
-}
-
-internal f32 calc_nonclient_caption_h(f32 dpi_scaling) //TODO(fran): OS code
-{
-    f32 res;
-
-    RECT testrc{ 0,0,100,100 }; 
-    RECT ncrc = testrc;
-
-    local_persistence f32 dpicorrection = OS::GetScalingForSystem(); assert(dpicorrection);
-    //NOTE(fran): AdjustWindowRect retains the dpi of the system when the app started, therefore if we started on a 125% dpi system AdjustWindowRect will _always_ return the value scaled by 1.25f, and so on, in order to correct for that we retrieve the system dpi at the time of our app starting and divide by it to obtain the unscaled result
-        
-    //TODO(fran): AdjustWindowRectExForDpi
-    AdjustWindowRect(&ncrc, WS_OVERLAPPEDWINDOW, FALSE/*no menu*/);
-    f32 h = (distance(testrc.top, ncrc.top) / dpicorrection) * dpi_scaling;
-
-    res = h;
-
-    return res;
 }
 
 struct measure_res {
@@ -2327,7 +2269,7 @@ internal f32 GetElementH(sz2 bounds, element_sizing_desc sz_desc, ui_element* el
         } break;
         case element_sizing_type::os_non_client_top:
         {
-            h = calc_nonclient_caption_h(ui->scaling);
+            h = OS::GetNonClientMargins(ui->scaling).topheight;
         } break;
         case element_sizing_type::remaining:
         {
@@ -2367,11 +2309,11 @@ struct ui_subelement {
 ui_subelement SubE(const ui_string& text) { return { .type = ui_subelement_type::text, .text = text }; }
 ui_subelement SubE(const ui_image& image) { return { .type = ui_subelement_type::image, .image = image }; }
 ui_subelement SubE(const ui_hotkey& hotkey) { return { .type = ui_subelement_type::hotkey, .hotkey= hotkey }; }
-ui_subelement SubE(OS::hotkey_data& hotkey_data) { return { .type = ui_subelement_type::hotkey, .hotkey = {.hk=&hotkey_data, .id=0} }; }
+ui_subelement SubE(iu::ui_hotkey_data& hotkey_data) { return { .type = ui_subelement_type::hotkey, .hotkey = {.hk=&hotkey_data, .id=0} }; }
 
 sz2 GetSubelementWH(sz2 bounds, element_sizing_desc2 sz_desc, const ui_subelement* elem, ui_state* ui)
 {
-    //TODO(fran): use sz_desc
+    //TODO(fran): use sz_desc with all sizing types
     assert(sz_desc.h.type == element_sizing_type::font);
     assert(sz_desc.w.type == element_sizing_type::font);
 
@@ -2753,7 +2695,7 @@ internal void ScaleUIFont(iu::ui_renderer* r, f32 last_scaling, f32 new_scaling)
         font_style,
         font_stretch,
         font_size,
-        L"en-us", //TODO(fran): consider locale? (in my opinion it's just pointless)
+        L"en-us", //TODO(fran): consider locale (with OS::GetUserLocale())? (in my opinion it's just pointless, why does it matter?)
         &font
     );
     assert(font);
@@ -2763,7 +2705,7 @@ internal void UIProcessing(ui_state* ui)
 {
     ui->render_and_update_screen = false;
     
-    if (ui->is_context_menu && GetForegroundWindow() != ui->wnd.hwnd) //TODO(fran): OS code
+    if (ui->is_context_menu && OS::GetForegroundWindow() != ui->wnd)
     {
         //TODO(fran): BUG: when the context menu has a function that does not change the current foreground window then it doesnt get disabled, eg when minimizing from it.
             //Solution: we can create another ui_action macro that wraps the user defined behaviour with a call to closewindow or smth like that
@@ -3132,7 +3074,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         }
         else
         {
-            ui->context_menu = iu::window_contextmenu();
+            ui->context_menu = iu::WindowContextmenu();
         }
 
         contextmenu_button_theme contextbutton_theme =
@@ -3303,7 +3245,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         //TODO(fran): move ui structure code outside
         memory_arena* arena = &ui->permanent_arena;
 
-        OS::hotkey_data close_hotkey{.vk = VK_F4, .mods = MOD_ALT}; //TODO(fran): OS code
+        iu::ui_hotkey_data close_hotkey{.key = iu::ui_key::F4, .mods = iu::ui_key_modifiers::Alt};
 
         ui_cursor Hand = {.type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
 
@@ -3357,9 +3299,8 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         rc2 r = rc2_from(ui->input.screen_mouseP + v2{1.f,0.f}, {1.f,1.f}); //TODO(fran): HACK: I move the window one pixel to the side so it does not immediately collide with the first element in the context menu, on windows the first couple leftmost pixels of the menu are empty
         OS::MoveWindow(ui->context_menu->wnd, r);
         OS::ShowWindow(ui->context_menu->wnd);
-        //BringWindowToTop(veil_ui->context_menu->wnd.hwnd); //TODO(fran): OS code //TODO(fran): this isnt required, but im sure we can find some edge cases where it is
         OS::SendWindowToTop(ui->context_menu->wnd);
-        SetForegroundWindow(ui->context_menu->wnd.hwnd);//TODO(fran): OS code //NOTE: this is necessary because we reuse the windows, therefore the first time (when the window _is_ actually created) it automatically becomes the foreground window, but later uses of the window wont
+        OS::SetForegroundWindow(ui->context_menu->wnd); //NOTE: this is necessary because we reuse the windows, therefore the first time (when the window _is_ actually created) it automatically becomes the foreground window, but later uses of the window wont
 
         //TODO(fran): instead of doing a direct show it's probably better to activate some interal flag, eg: b32 active;
     };

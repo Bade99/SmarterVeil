@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "win32_sdk.h"
 #include "resource.h"
@@ -14,6 +14,8 @@
 
 #define WM_CUSTOMSETCURSOR (WM_USER + 4) /*wParam=HCURSOR*/
 
+#define WM_FUNC_HKTOSTR (WM_USER + 5)
+
 //NOTE(fran): custom window messages can go from WM_USER(0x0400) up to 0x0FFF
 
 //TODO?(fran): Windows API calls that need chaging for Dpi aware versions:
@@ -24,13 +26,13 @@
 	// SystemParametersInfo	SystemParametersInfoForDpi
 	// GetDpiForMonitor	    GetDpiForWindow
 
-
 namespace OS {
 
 struct window_handle { //TODO(fran): are we happy with having to define this before including Iu?
 	HWND hwnd;
 	b32 operator!() { return !this->hwnd; } //TODO(fran): replace with is_valid?
 	b32 operator==(window_handle cmp_wnd) { return this->hwnd == cmp_wnd.hwnd; }
+	b32 operator!=(window_handle cmp_wnd) { return this->hwnd != cmp_wnd.hwnd; }
 };
 
 }
@@ -226,129 +228,143 @@ internal bool test_pt_rc(POINT p, RECT r)
 	return res;
 }
 
-internal iu::ui_key VkToIuKey(u8 vk) //TODO(fran): should this function also know whether it is an extended key?
+internal iu::ui_key VkToIuKey(u8 vk)
 {
 	switch (vk)
 	{
-	case VK_ESCAPE: return iu::ui_key::Esc;
-	case VK_F1:	return iu::ui_key::F1;
-	case VK_F2:	return iu::ui_key::F2;
-	case VK_F3:	return iu::ui_key::F3;
-	case VK_F4:	return iu::ui_key::F4;
-	case VK_F5:	return iu::ui_key::F5;
-	case VK_F6:	return iu::ui_key::F6;
-	case VK_F7:	return iu::ui_key::F7;
-	case VK_F8:	return iu::ui_key::F8;
-	case VK_F9:	return iu::ui_key::F9;
-	case VK_F10: return iu::ui_key::F10;
-	case VK_F11: return iu::ui_key::F11;
-	case VK_F12: return iu::ui_key::F12;
-	case VK_F13: return iu::ui_key::F13;
-	case VK_F14: return iu::ui_key::F14;
-	case VK_F15: return iu::ui_key::F15;
-	case VK_F16: return iu::ui_key::F16;
-	case VK_F17: return iu::ui_key::F17;
-	case VK_F18: return iu::ui_key::F18;
-	case VK_F19: return iu::ui_key::F19;
-	case VK_F20: return iu::ui_key::F20;
-	case VK_F21: return iu::ui_key::F21;
-	case VK_F22: return iu::ui_key::F22;
-	case VK_F23: return iu::ui_key::F23;
-	case VK_F24: return iu::ui_key::F24;
-	case 'A': return iu::ui_key::A;
-	case 'B': return iu::ui_key::B;
-	case 'C': return iu::ui_key::C;
-	case 'D': return iu::ui_key::D;
-	case 'E': return iu::ui_key::E;
-	case 'F': return iu::ui_key::F;
-	case 'G': return iu::ui_key::G;
-	case 'H': return iu::ui_key::H;
-	case 'I': return iu::ui_key::I;
-	case 'J': return iu::ui_key::J;
-	case 'K': return iu::ui_key::K;
-	case 'L': return iu::ui_key::L;
-	case 'M': return iu::ui_key::M;
-	case 'N': return iu::ui_key::N;
-	case 'O': return iu::ui_key::O;
-	case 'P': return iu::ui_key::P;
-	case 'Q': return iu::ui_key::Q;
-	case 'R': return iu::ui_key::R;
-	case 'S': return iu::ui_key::S;
-	case 'T': return iu::ui_key::T;
-	case 'U': return iu::ui_key::U;
-	case 'V': return iu::ui_key::V;
-	case 'W': return iu::ui_key::W;
-	case 'X': return iu::ui_key::X;
-	case 'Y': return iu::ui_key::Y;
-	case 'Z': return iu::ui_key::Z;
-	case '0': return iu::ui_key::_0;
-	case '1': return iu::ui_key::_1;
-	case '2': return iu::ui_key::_2;
-	case '3': return iu::ui_key::_3;
-	case '4': return iu::ui_key::_4;
-	case '5': return iu::ui_key::_5;
-	case '6': return iu::ui_key::_6;
-	case '7': return iu::ui_key::_7;
-	case '8': return iu::ui_key::_8;
-	case '9': return iu::ui_key::_9;
-	case VK_NUMPAD0: return iu::ui_key::Numpad0;
-	case VK_NUMPAD1: return iu::ui_key::Numpad1;
-	case VK_NUMPAD2: return iu::ui_key::Numpad2;
-	case VK_NUMPAD3: return iu::ui_key::Numpad3;
-	case VK_NUMPAD4: return iu::ui_key::Numpad4;
-	case VK_NUMPAD5: return iu::ui_key::Numpad5;
-	case VK_NUMPAD6: return iu::ui_key::Numpad6;
-	case VK_NUMPAD7: return iu::ui_key::Numpad7;
-	case VK_NUMPAD8: return iu::ui_key::Numpad8;
-	case VK_NUMPAD9: return iu::ui_key::Numpad9;
-	case VK_MULTIPLY: return iu::ui_key::NumpadMultiply;
-	case VK_ADD: return iu::ui_key::NumpadAdd;
-	case VK_SUBTRACT: return iu::ui_key::NumpadSubtract;
-	case VK_DECIMAL: return iu::ui_key::NumpadDecimal;
-	case VK_DIVIDE: return iu::ui_key::NumpadDivide;
-		//	return iu::ui_key::NumpadEnter; //TODO(fran): this is VK_RETURN + the extended key flag
-	case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL: return iu::ui_key::Ctrl;
-	case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT: return iu::ui_key::Shift;
-	case VK_MENU: case VK_LMENU: case VK_RMENU: return iu::ui_key::Alt;
-	case VK_LWIN: case VK_RWIN: return iu::ui_key::OS;
-	case VK_TAB: return iu::ui_key::Tab;
-	case VK_CAPITAL: return iu::ui_key::CapsLock;
-	case VK_NUMLOCK: return iu::ui_key::NumLock;
-	case VK_SCROLL: return iu::ui_key::ScrollLock;
-	case VK_UP: return iu::ui_key::UpArrow;
-	case VK_DOWN: return iu::ui_key::DownArrow;
-	case VK_LEFT: return iu::ui_key::LeftArrow;
-	case VK_RIGHT: return iu::ui_key::RightArrow;
-	case VK_OEM_7: return iu::ui_key::Apostrophe;
-	case VK_OEM_COMMA: return iu::ui_key::Comma;
-	case VK_OEM_PERIOD: return iu::ui_key::Period;
-	case VK_OEM_1: return iu::ui_key::Semicolon;
-	case VK_OEM_MINUS: return iu::ui_key::Minus;
-	case VK_OEM_PLUS: return iu::ui_key::Equal; //TODO(fran): wtf, on US it is =, on Spanish it is +
-	case VK_OEM_4: return iu::ui_key::LeftBracket;
-	case VK_OEM_6: return iu::ui_key::RightBracket;
-	case VK_OEM_5: return iu::ui_key::Backslash;
-	case VK_OEM_2: return iu::ui_key::Forwardslash;
-	case VK_OEM_3: return iu::ui_key::GraveAccent;
-	case VK_OEM_102: return iu::ui_key::LessThan;
-	case VK_PRIOR: return iu::ui_key::PageUp;
-	case VK_NEXT: return iu::ui_key::PageDown;
-	case VK_HOME: return iu::ui_key::Home;
-	case VK_END:  return iu::ui_key::End;
-	case VK_INSERT: return iu::ui_key::Insert;
-	case VK_DELETE: return iu::ui_key::DeleteForward;
-	case VK_BACK: return iu::ui_key::DeleteBackward;
-	case VK_SPACE: return iu::ui_key::Space;
-	case VK_RETURN: return iu::ui_key::Enter;
-	case VK_SNAPSHOT: return iu::ui_key::PrintScreen;
-	case VK_APPS: return iu::ui_key::ContextMenu;
-	case VK_VOLUME_UP: return iu::ui_key::VolumeUp;
-	case VK_VOLUME_DOWN: return iu::ui_key::VolumeDown;
-	case VK_VOLUME_MUTE: return iu::ui_key::VolumeMute;
-	case VK_MEDIA_NEXT_TRACK: return iu::ui_key::MediaNextTrack;
-	case VK_MEDIA_PREV_TRACK: return iu::ui_key::MediaPrevTrack;
-	case VK_MEDIA_PLAY_PAUSE: return iu::ui_key::MediaPlayPause;
-	case VK_MEDIA_STOP: return iu::ui_key::MediaStop;
+#define _vk_k_mapping(mapping) \
+	mapping(VK_ESCAPE, iu::ui_key::Esc)					   \
+	mapping(VK_F1, iu::ui_key::F1)						   \
+	mapping(VK_F2, iu::ui_key::F2)						   \
+	mapping(VK_F3, iu::ui_key::F3)						   \
+	mapping(VK_F4, iu::ui_key::F4)						   \
+	mapping(VK_F5, iu::ui_key::F5)						   \
+	mapping(VK_F6, iu::ui_key::F6)						   \
+	mapping(VK_F7, iu::ui_key::F7)						   \
+	mapping(VK_F8, iu::ui_key::F8)						   \
+	mapping(VK_F9, iu::ui_key::F9)						   \
+	mapping(VK_F10, iu::ui_key::F10)						   \
+	mapping(VK_F11, iu::ui_key::F11)						   \
+	mapping(VK_F12, iu::ui_key::F12)						   \
+	mapping(VK_F13, iu::ui_key::F13)						   \
+	mapping(VK_F14, iu::ui_key::F14)						   \
+	mapping(VK_F15, iu::ui_key::F15)						   \
+	mapping(VK_F16, iu::ui_key::F16)						   \
+	mapping(VK_F17, iu::ui_key::F17)						   \
+	mapping(VK_F18, iu::ui_key::F18)						   \
+	mapping(VK_F19, iu::ui_key::F19)						   \
+	mapping(VK_F20, iu::ui_key::F20)						   \
+	mapping(VK_F21, iu::ui_key::F21)						   \
+	mapping(VK_F22, iu::ui_key::F22)						   \
+	mapping(VK_F23, iu::ui_key::F23)						   \
+	mapping(VK_F24, iu::ui_key::F24)						   \
+	mapping('A', iu::ui_key::A)							   \
+	mapping('B', iu::ui_key::B)							   \
+	mapping('C', iu::ui_key::C)							   \
+	mapping('D', iu::ui_key::D)							   \
+	mapping('E', iu::ui_key::E)							   \
+	mapping('F', iu::ui_key::F)							   \
+	mapping('G', iu::ui_key::G)							   \
+	mapping('H', iu::ui_key::H)							   \
+	mapping('I', iu::ui_key::I)							   \
+	mapping('J', iu::ui_key::J)							   \
+	mapping('K', iu::ui_key::K)							   \
+	mapping('L', iu::ui_key::L)							   \
+	mapping('M', iu::ui_key::M)							   \
+	mapping('N', iu::ui_key::N)							   \
+	mapping('O', iu::ui_key::O)							   \
+	mapping('P', iu::ui_key::P)							   \
+	mapping('Q', iu::ui_key::Q)							   \
+	mapping('R', iu::ui_key::R)							   \
+	mapping('S', iu::ui_key::S)							   \
+	mapping('T', iu::ui_key::T)							   \
+	mapping('U', iu::ui_key::U)							   \
+	mapping('V', iu::ui_key::V)							   \
+	mapping('W', iu::ui_key::W)							   \
+	mapping('X', iu::ui_key::X)							   \
+	mapping('Y', iu::ui_key::Y)							   \
+	mapping('Z', iu::ui_key::Z)							   \
+	mapping('0', iu::ui_key::_0)							   \
+	mapping('1', iu::ui_key::_1)							   \
+	mapping('2', iu::ui_key::_2)							   \
+	mapping('3', iu::ui_key::_3)							   \
+	mapping('4', iu::ui_key::_4)							   \
+	mapping('5', iu::ui_key::_5)							   \
+	mapping('6', iu::ui_key::_6)							   \
+	mapping('7', iu::ui_key::_7)							   \
+	mapping('8', iu::ui_key::_8)							   \
+	mapping('9', iu::ui_key::_9)							   \
+	mapping(VK_NUMPAD0, iu::ui_key::Numpad0)				   \
+	mapping(VK_NUMPAD1, iu::ui_key::Numpad1)				   \
+	mapping(VK_NUMPAD2, iu::ui_key::Numpad2)				   \
+	mapping(VK_NUMPAD3, iu::ui_key::Numpad3)				   \
+	mapping(VK_NUMPAD4, iu::ui_key::Numpad4)				   \
+	mapping(VK_NUMPAD5, iu::ui_key::Numpad5)				   \
+	mapping(VK_NUMPAD6, iu::ui_key::Numpad6)				   \
+	mapping(VK_NUMPAD7, iu::ui_key::Numpad7)				   \
+	mapping(VK_NUMPAD8, iu::ui_key::Numpad8)				   \
+	mapping(VK_NUMPAD9, iu::ui_key::Numpad9)				   \
+	mapping(VK_MULTIPLY, iu::ui_key::NumpadMultiply)		   \
+	mapping(VK_ADD, iu::ui_key::NumpadAdd)				   \
+	mapping(VK_SUBTRACT, iu::ui_key::NumpadSubtract)		   \
+	mapping(VK_DECIMAL, iu::ui_key::NumpadDecimal)		   \
+	mapping(VK_DIVIDE, iu::ui_key::NumpadDivide)			   \
+	mapping(VK_CONTROL, iu::ui_key::Ctrl)				   \
+	mapping(VK_SHIFT, iu::ui_key::Shift)					   \
+	mapping(VK_MENU, iu::ui_key::Alt)					   \
+	mapping(VK_LWIN, iu::ui_key::OS)						   \
+	mapping(VK_TAB, iu::ui_key::Tab)						   \
+	mapping(VK_CAPITAL, iu::ui_key::CapsLock)			   \
+	mapping(VK_NUMLOCK, iu::ui_key::NumLock)				   \
+	mapping(VK_SCROLL, iu::ui_key::ScrollLock)			   \
+	mapping(VK_UP, iu::ui_key::UpArrow)					   \
+	mapping(VK_DOWN, iu::ui_key::DownArrow)				   \
+	mapping(VK_LEFT, iu::ui_key::LeftArrow)				   \
+	mapping(VK_RIGHT, iu::ui_key::RightArrow)			   \
+	mapping(VK_OEM_7, iu::ui_key::Apostrophe)			   \
+	mapping(VK_OEM_COMMA, iu::ui_key::Comma)				   \
+	mapping(VK_OEM_PERIOD, iu::ui_key::Period)			   \
+	mapping(VK_OEM_1, iu::ui_key::Semicolon)				   \
+	mapping(VK_OEM_MINUS, iu::ui_key::Minus)				   \
+	mapping(VK_OEM_PLUS, iu::ui_key::Equal) /*TODO(fran): wtf, on US it is =, on Spanish it is + */		\
+	mapping(VK_OEM_4, iu::ui_key::LeftBracket)			   \
+	mapping(VK_OEM_6, iu::ui_key::RightBracket)			   \
+	mapping(VK_OEM_5, iu::ui_key::Backslash)				   \
+	mapping(VK_OEM_2, iu::ui_key::Forwardslash)			   \
+	mapping(VK_OEM_3, iu::ui_key::GraveAccent)			   \
+	mapping(VK_OEM_102, iu::ui_key::LessThan)			   \
+	mapping(VK_PRIOR, iu::ui_key::PageUp)				   \
+	mapping(VK_NEXT, iu::ui_key::PageDown)				   \
+	mapping(VK_HOME, iu::ui_key::Home)					   \
+	mapping(VK_END, iu::ui_key::End)					   \
+	mapping(VK_INSERT, iu::ui_key::Insert)				   \
+	mapping(VK_DELETE, iu::ui_key::DeleteForward)		   \
+	mapping(VK_BACK, iu::ui_key::DeleteBackward)		   \
+	mapping(VK_SPACE, iu::ui_key::Space)				   \
+	mapping(VK_RETURN, iu::ui_key::Enter)				   \
+	mapping(VK_SNAPSHOT, iu::ui_key::PrintScreen)		   \
+	mapping(VK_PAUSE, iu::ui_key::Pause)		   \
+	mapping(VK_APPS, iu::ui_key::ContextMenu)			   \
+	mapping(VK_VOLUME_UP, iu::ui_key::VolumeUp)			   \
+	mapping(VK_VOLUME_DOWN, iu::ui_key::VolumeDown)		   \
+	mapping(VK_VOLUME_MUTE, iu::ui_key::VolumeMute)		   \
+	mapping(VK_MEDIA_NEXT_TRACK, iu::ui_key::MediaNextTrack)\
+	mapping(VK_MEDIA_PREV_TRACK, iu::ui_key::MediaPrevTrack)\
+	mapping(VK_MEDIA_PLAY_PAUSE, iu::ui_key::MediaPlayPause)\
+	mapping(VK_MEDIA_STOP, iu::ui_key::MediaStop)
+
+	//	return iu::ui_key::NumpadEnter; //TODO(fran): this is VK_RETURN + the extended key flag
+#define _vktok(vk, k) case vk : return k;
+	_vk_k_mapping(_vktok);
+
+	//NOTE(fran): we can do one to many mapping, but unfortunately not many to one because the compiler will throw an error saying that case statement already exists, so we gotta manually add the one to many mappings here (but not in IuKeyToVk)
+	_vktok(VK_LCONTROL, iu::ui_key::Ctrl)
+	_vktok(VK_RCONTROL, iu::ui_key::Ctrl)
+	_vktok(VK_LSHIFT, iu::ui_key::Shift)
+	_vktok(VK_RSHIFT, iu::ui_key::Shift)
+	_vktok(VK_LMENU, iu::ui_key::Alt)
+	_vktok(VK_RMENU, iu::ui_key::Alt)
+	_vktok(VK_RWIN, iu::ui_key::OS)
 	default:
 	{
 		OutputDebugStringA("Win32 WARNING: unhandled virtual key: ");
@@ -356,6 +372,146 @@ internal iu::ui_key VkToIuKey(u8 vk) //TODO(fran): should this function also kno
 		OutputDebugStringA("\n");
 		return iu::ui_key::Shift; //TODO(fran): return null key? tell the caller not to use the key? leave it like this?
 	}
+	}
+}
+
+internal u8 IuKeyToVk(iu::ui_key k)
+{
+	switch (k)
+	{
+#define _ktovk(vk, k) case k : return vk;
+		_vk_k_mapping(_ktovk);
+	default:
+	{
+		OutputDebugStringA("[WARNING][Win32]: unhandled Iu key with value: ");
+		char buf[16]; sprintf_s(buf, 16, "%d\n", k); OutputDebugStringA(buf); //TODO(fran): auto generated enum value names
+		return VK_SHIFT; //TODO(fran): return null key? tell the caller not to use the key? leave it like this?
+	}
+	}
+}
+
+u16 IuKeyModsToVkMods(iu::ui_key_modifiers _mods) {
+	u16 res = 
+		(_mods & iu::ui_key_modifiers::Ctrl ? MOD_CONTROL : 0) 
+		| (_mods & iu::ui_key_modifiers::Shift ? MOD_SHIFT : 0) 
+		| (_mods & iu::ui_key_modifiers::Alt ? MOD_ALT : 0) 
+		| (_mods & iu::ui_key_modifiers::OS ? MOD_WIN : 0);
+	//NOTE(fran): hotkeys that include the Windows key are reserved for use by the OS, I add it just for completion but it will not be a valid hotkey
+	//TODO(fran): faster conversion via bitshifting instead of conditionals
+	return res;
+}
+
+struct hotkey_data {
+	u8 vk;
+	u16 mods;
+
+	b32 is_valid_hotkey()
+	{
+		b32 res = this->vk || this->mods;
+		return res;
+	}
+
+	b32 operator!=(hotkey_data hotkey_to_compare)
+	{
+		b32 res = this->vk != hotkey_to_compare.vk || this->mods != hotkey_to_compare.mods;
+		return res;
+	}
+	hotkey_data(iu::ui_hotkey_data _hk)
+	{
+		this->vk = IuKeyToVk(_hk.key);
+		this->mods = IuKeyModsToVkMods(_hk.mods);
+	}
+};
+
+//TODO(fran): #define max_hotkey_char_cnt 128 (or smth like that)
+internal void _HotkeyToString(_OS::hotkey_data hk, s8* hotkey_str)
+{
+	//NOTE(fran): the best possible string conversion comes from the lparam value, only if the string for the virtual key code cant be retrieved from the lparam we attempt to get it from vk
+
+	b32 first_mod = true;
+	if (hk.mods & MOD_CONTROL) {
+		if (!first_mod) *hotkey_str += u8"+";
+		*hotkey_str += u8"Ctrl";
+		first_mod = false;
+	}
+	if (hk.mods & MOD_ALT) {
+		if (!first_mod) *hotkey_str += u8"+";
+		*hotkey_str += u8"Alt";
+		first_mod = false;
+	}
+	if (hk.mods & MOD_SHIFT) {
+		if (!first_mod) *hotkey_str += u8"+";
+		*hotkey_str += u8"Shift";
+		first_mod = false;
+	}
+	if (hk.mods & MOD_WIN) {
+		if (!first_mod) *hotkey_str += u8"+";
+		*hotkey_str += u8"Windows";
+		first_mod = false;
+	}
+
+	u8 vk = hk.vk;
+
+	s8 vk_str = stack_s(decltype(vk_str), 128);
+
+	wchar_t vk_str16[128];
+#if 0 //this is the correct way to do mapping, but since we arent sending the scancode to Iu we cant use it
+	//TODO(fran): we maaay want to have this stored in the language file instead?
+	int keynameres = GetKeyNameTextW((LONG)(hk.translation_nfo & (~(LPARAM)(1 << 25))), vk_str16, ArrayCount(vk_str16)); //NOTE(fran): set bit 25 to 0 to indicate we dont care about left or right keys (eg Left vs Right Ctrl)
+	//vk_str16[keynameres++] = L'ー';
+#endif
+
+		//TODO(fran): this is close enough, only thing missing now is that the language doesnt seem to get updated, we have to close and reopen the app before Windows changes our language, we are probably missing some response to WM_INPUTLANGUAGECHANGED or smth like that that modifies some value in our process since both MapVirtualKeyExW and GetKeyNameTextW fail to change language
+	int keynameres = 0;
+	u32 scancode = ::MapVirtualKeyExW(vk, MAPVK_VK_TO_VSC, ::GetKeyboardLayout(/*::GetThreadId(_OS::thread_setup.io_thread)*/0)); //INFO(fran): GetKeyboardLayout gets buggy if we pass it a thread id different from the current thread (in our case the io_thread)
+	//assert(scancode == ((hk.translation_nfo >> 16) & 0xFF)); //check scancode vs scancode always match, what's expected to not match is the extended key flag
+
+	switch (vk) //Reference: https://stackoverflow.com/questions/38100667/windows-virtual-key-codes
+	{
+	case VK_VOLUME_MUTE: case VK_VOLUME_DOWN: case VK_VOLUME_UP:
+	case VK_MEDIA_NEXT_TRACK: case VK_MEDIA_PREV_TRACK: case VK_MEDIA_STOP: case VK_MEDIA_PLAY_PAUSE:
+		//TODO(fran): there are probably more keys that cant be mapped, like the VK_BROWSER_... but Iu currently doesnt handle them
+	{
+		//NOTE(fran): some virtual keys are outright unmappable by Windows for some strange reason, even the scancode is simply 0 and has the extended bit set, wtf Windows!? For those ones we use our own (English language only) mapping
+		//Another strange thing is that VK_PAUSE _does_ have a scancode mapping but still MapVirtualKeyExW cannot map it, only god knows the answer to that one, or maybe Raymond Chen. 
+		//Found the reason: https://handmade.network/forums/articles/t/2823-keyboard_inputs_-_scancodes%252C_raw_input%252C_text_input%252C_key_names we should do MapVirtualKeyExW(0xe100 | hk.vk, MAPVK_VK_TO_VSC_EX, ...); there's only one problem MAPVK_VK_TO_VSC_EX only works on Vista & later, thanks Windows
+		//const s8 stringed_vk = VkToString(vk);
+		//vk_str += stringed_vk;
+	} break;
+	case VK_PAUSE: //TODO(fran): find out if this always works
+		scancode = 0x45;
+		goto default_case;
+	case VK_LEFT: case VK_UP: case VK_RIGHT: case VK_DOWN:
+	case VK_RCONTROL: case VK_RMENU:
+	case VK_LWIN: case VK_RWIN: case VK_APPS:
+	case VK_PRIOR: case VK_NEXT: case VK_END: case VK_HOME:
+	case VK_INSERT: case VK_DELETE:
+	case VK_DIVIDE: case VK_NUMLOCK:
+		//NOTE(fran): other keys need the extended bit set, I have no clue why Windows' mapper doesnt set it
+		scancode |= KF_EXTENDED;
+	default:
+	default_case:
+		keynameres += GetKeyNameTextW(scancode << 16, vk_str16 + keynameres, ArrayCount(vk_str16) - keynameres);
+	}
+
+	if (keynameres) {
+		//TODO(fran): 
+		// if keynameres > 2 && IS_HIGH_SURROGATE(vk_str[0]) and advance +2 & keynameres-1
+		//TODO(fran): uppercase the first character, there are cases where it's lowercase (ej ñ)
+		if (keynameres > 1) _wcslwr_s(vk_str16 + 1, keynameres); //TODO(fran): better lowercase functions, and work with locales
+
+		s8 vk_str8 = _OS::convert_to_s8({ .chars = (utf16*)vk_str16, .cnt = (u64)keynameres }); defer{ _OS::free_small_mem(vk_str8.chars); }; //TODO(fran): convert in place, straight to vk_str
+
+		vk_str += vk_str8;
+	}
+	else {
+		const s8 stringed_vk = VkToString(vk);
+		vk_str += stringed_vk;
+	}
+
+	if (vk_str.cnt) {
+		if (!first_mod) *hotkey_str += u8"+";
+		*hotkey_str += vk_str;
 	}
 }
 
@@ -545,6 +701,15 @@ LRESULT CALLBACK UIProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		MovWindow(hWnd, suggested_window); //TODO(fran): test the rcs we get, I've seen that for many applications this suggested new window is terrible, both in position & size, see if we can come up with a better suggestion
 	} break;
 	case WM_CUSTOMSETCURSOR: { SetCursor((HCURSOR)wParam); } break;
+
+	//TODO(fran): Edge case: when Alt+tabbing out we wont receive the Alt up msg, we should therefore manually push an Alt up key event on WM_KILLFOCUS
+		//Reference: https://handmade.network/forums/articles/t/2823-keyboard_inputs_-_scancodes%252C_raw_input%252C_text_input%252C_key_names
+	case WM_FUNC_HKTOSTR:
+	{
+		struct _hktostr { _OS::hotkey_data hk; s8* hotkey_str; };
+		_hktostr* hktostr = (decltype(hktostr))wParam;
+		_HotkeyToString(hktostr->hk, hktostr->hotkey_str);
+	} break;
 	default:
 	{
 		default_handling:
@@ -554,9 +719,85 @@ LRESULT CALLBACK UIProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-internal void io_thread_handler()
+internal OS::window_handle _Window(OS::window_creation_flags flags)
 {
-	//TODO(fran): we could move all this msg processing code to the OS specific section and simply provide access to the iu's message queue
+	OS::window_handle res{ 0 };
+
+	HINSTANCE instance = GetModuleHandleW(nil);
+
+	WNDCLASSEXW wc{ 0 };
+	wc.cbSize = sizeof(wc);
+	wc.style = CS_DBLCLKS;
+	wc.lpfnWndProc = &_OS::UIProc;
+	wc.hInstance = instance;
+	i32 SmallIconX = GetSystemMetrics(SM_CXSMICON);//TODO(fran): GetSystemMetricsForDpi?
+	i32 LargeIconX = GetSystemMetrics(SM_CXICON);
+	local_persistence HICON logo_large = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, LargeIconX, LargeIconX, 0);
+	local_persistence HICON logo_small = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, SmallIconX, SmallIconX, 0);
+	wc.hIcon = logo_large;
+	wc.hIconSm = logo_small;
+	wc.hCursor = nil;// LoadCursorW(nil, IDC_ARROW); //NOTE(fran): do _not_ use the hinstance parameter
+	wc.lpszClassName = appnameL L"_ui_class";
+
+	if (RegisterClassExW(&wc) || (GetLastError() == ERROR_CLASS_ALREADY_EXISTS))
+	{
+#if 1
+		u32 extended_flags = WS_EX_NOREDIRECTIONBITMAP;
+#else //os_managed
+		u32 extended_flags = 0;
+#endif
+#ifndef DEBUG_BUILD
+		extended_flags |= (flags & OS::topmost) ? WS_EX_TOPMOST : 0;
+#endif
+		extended_flags |= (flags & OS::notaskbar) ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW;
+		extended_flags |= (flags & OS::clickthrough) ? WS_EX_LAYERED | WS_EX_TRANSPARENT : 0;
+
+#if 1
+		u32 basic_flags = WS_POPUP;
+#else //os_managed
+		u32 basic_flags = WS_OVERLAPPEDWINDOW;
+#endif
+		basic_flags |= (flags & OS::resizeborder) ? WS_THICKFRAME | WS_MAXIMIZEBOX : 0; //TODO(fran): separate WS_MAXIMIZEBOX as a different flag?
+
+		//SUPER IMPORTANT NOTE(fran): WS_MAXIMIZEBOX is _required_ for the aero window auto-resizing when touching screen borders
+
+		res.hwnd = CreateWindowExW(
+			extended_flags,
+			wc.lpszClassName,
+			appnameL,
+			basic_flags,
+			0, 0, 0, 0,
+			nil, nil, nil, nil);
+
+		UpdateWindow(res.hwnd);
+	}
+
+	return res;
+}
+
+declaration internal void io_thread_handler();//TODO(fran): HACK: remove
+
+struct io_thread_setup {
+	HANDLE io_thread;
+	HWND dummy_wnd; //handled by the io_thread //TODO(fran): create it in our constructor to avoid edge case race conditions on startup
+	io_thread_setup()
+	{
+		//TODO(fran): we can create & destroy a dummy window on both the main & ui threads so their msg queues are initilized and we can do AttachThreadInput
+		this->io_thread = ::CreateThread(nil, 0, [](void*)->DWORD {io_thread_handler(); return 0; }, nil, 0, nil);
+	}
+	~io_thread_setup()
+	{
+		::TerminateThread(this->io_thread, 0); //TODO(fran): we may want to do termination from inside the thread, TerminateThread is not too safe
+
+	}
+} global_persistence thread_setup;
+
+definition internal void io_thread_handler()
+{
+	_OS::thread_setup.dummy_wnd = _Window(OS::notaskbar).hwnd; //TODO(fran): destroy the window
+	if (!_OS::thread_setup.dummy_wnd) crash(); //TODO(fran): may only crash this thread, use TerminateProcess()
+	::ShowWindow(_OS::thread_setup.dummy_wnd, SW_HIDE);
+
 	while (true)
 	{
 		MSG msg;
@@ -634,14 +875,44 @@ internal void io_thread_handler()
 				iu::PushEventMouseWheel(wnd, { units_to_scroll, 0 });
 			} break;
 			//TODO(fran): WM_SYSCHAR?: sent when a key is pressed while also pressing Alt, used for keyboard menubar navigation
-			case WM_CHAR:
+			case WM_CHAR: //TODO(fran): WM_UNICHAR
 			{
+				//NOTE(fran): WM_CHAR is generated when WM_KEYDOWN messages are passed to TranslateMessage, the character is in the wParam and encoded in UTF-16. If the codepoint is 4 bytes, there are 2 WM_CHAR messages, one with the high surrogate and one with the low surrogate. The surrogate on its own is not valid unicode and cannot be converted to utf8, we have to wait till both the high and low surrogate are joined before doing the conversion
+				
+				s16 chars16 = stack_s(decltype(chars16), 2);
+
+				auto PushTextEvents = [&]() {
+					assert(chars16.cnt > 0 && chars16.cnt <= 2);
+					utf8 c[4];
+					i32 cnt = WideCharToMultiByte(CP_UTF8, 0, (WCHAR*)chars16.chars, chars16.cnt, (char*)c, ArrayCount(c), 0, 0) / sizeof(*c);
+					assert(cnt);
+					for (i32 i = 0; i < cnt; i++) iu::PushEventText(wnd, c[i]);
+				};
+
 				utf16 c16 = msg.wParam;
-				//TODO(fran): in the lparam is the scancode & extended key bit, can we use them for hotkeys or smth?
-				utf8 c[4];
-				i32 cnt = WideCharToMultiByte(CP_UTF8, 0, (WCHAR*)&c16, 1, (char*)c, ArrayCount(c), 0, 0) / sizeof(*c);
-				assert(cnt);
-				for (i32 i = 0; i < cnt; i++) iu::PushEventText(wnd, c[i]);
+
+				local_persistence utf16 highsurrogate = 0;
+
+				if (IS_HIGH_SURROGATE(c16))
+				{
+					highsurrogate = c16;
+				}
+				else if (IS_LOW_SURROGATE(c16))
+				{
+					if (IS_SURROGATE_PAIR(highsurrogate, c16))
+					{
+						chars16 += highsurrogate;
+						chars16 += c16;
+						PushTextEvents();
+					}
+					highsurrogate = 0;
+				}
+				else
+				{
+					chars16 += c16;
+					PushTextEvents();
+				}
+
 			} break;
 			case WM_HOTKEY:
 			{
@@ -654,7 +925,13 @@ internal void io_thread_handler()
 			case WM_KEYDOWN:
 			{
 				u8 vk = msg.wParam;
-				iu::PushEventKey(wnd, _OS::VkToIuKey(vk), iu::ui_key_state::clicked);
+				iu::PushEventKey(wnd, _OS::VkToIuKey(vk), iu::ui_key_state::clicked, msg.lParam);
+			} break;
+			case WM_SYSKEYUP:
+			case WM_KEYUP:
+			{
+				u8 vk = msg.wParam;
+				iu::PushEventKey(wnd, _OS::VkToIuKey(vk), iu::ui_key_state::unclicked, msg.lParam);
 			} break;
 			}
 			DispatchMessageW(&msg);
@@ -663,20 +940,6 @@ internal void io_thread_handler()
 		::MsgWaitForMultipleObjectsEx(0, nil, INFINITE, QS_ALLINPUT, 0 | MWMO_ALERTABLE | MWMO_INPUTAVAILABLE); //TODO(fran): MWMO_INPUTAVAILABLE
 	}
 }
-
-struct io_thread_setup {
-	HANDLE io_thread;
-	io_thread_setup()
-	{
-		//TODO(fran): we can create & destroy a dummy window on both the main & ui threads so their msg queues are initilized and we can do AttachThreadInput
-		this->io_thread = ::CreateThread(nil, 0, [](void*)->DWORD {io_thread_handler(); return 0; }, nil, 0, nil);
-	}
-	~io_thread_setup()
-	{
-		::TerminateThread(this->io_thread, 0); //TODO(fran): we may want to do termination from inside the thread, TerminateThread is not too safe
-
-	}
-} global_persistence thread_setup;
 
 internal f32 GetScalingForMonitor(HMONITOR monitor) //TODO(fran): OS code
 {
@@ -718,6 +981,7 @@ internal f32 GetScalingForMonitor(HMONITOR monitor) //TODO(fran): OS code
 
 namespace OS
 {
+#if 0
 	struct hotkey_data {
 		u8 vk;    //Virtual Key
 		u16 mods; //Hotkey modifiers: ctrl, alt, shift
@@ -735,6 +999,7 @@ namespace OS
 			return res;
 		}
 	};
+#endif
 
 	struct _work_folder {
 		s8 dir_str;
@@ -841,122 +1106,62 @@ namespace OS
 	}
 
 #define locale_max_length (LOCALE_NAME_MAX_LENGTH*2) /*utf8 length*/
-	//returns true if successful, if res->cnt is at least equal to locale_max_length the function will never fail
-	internal b32 get_user_locale(s8* res)
+	//NOTE(fran): the string must be able to contain locale_max_length characters
+	internal void GetUserLocale(s8* res)
 	{
-		assert(res->cnt >= locale_max_length);
-		utf16 loc16[LOCALE_NAME_MAX_LENGTH];
-		b32 ret = GetUserDefaultLocaleName((wchar_t*)loc16, ArrayCount(loc16));
+		assert((res->cnt_allocd - res->cnt) >= locale_max_length);
+		utf16 loc16[LOCALE_NAME_MAX_LENGTH]; loc16[0] = 0;
+		GetUserDefaultLocaleName((wchar_t*)loc16, ArrayCount(loc16));
 
 		s8 loc = _OS::convert_to_s8(temp_s(loc16)); defer{ _OS::free_small_mem(loc.chars); };
 		*res += loc;
-
-		return ret;
 	}
 
-	//TODO(fran): #define max_hotkey_char_cnt 128 (or smth like that)
-	internal void HotkeyToString(hotkey_data hk, s8* hotkey_str)
+	internal OS::window_handle Window(OS::window_creation_flags creation_flags)
 	{
-		//NOTE(fran): the best possible string conversion comes from the lparam value, only if the string for the virtual key code cant be retrieved from the lparam we attempt to get it from vk
+		OS::window_handle res;
 
-		b32 first_mod = true;
-		if (hk.mods & MOD_CONTROL) {
-			if (!first_mod) *hotkey_str += u8"+";
-			*hotkey_str += u8"Ctrl";
-			first_mod = false;
-		}
-		if (hk.mods & MOD_ALT) {
-			if (!first_mod) *hotkey_str += u8"+";
-			*hotkey_str += u8"Alt";
-			first_mod = false;
-		}
-		if (hk.mods & MOD_SHIFT) {
-			if (!first_mod) *hotkey_str += u8"+";
-			*hotkey_str += u8"Shift";
-			first_mod = false;
-		}
+		struct _create_wnd { OS::window_handle wnd; OS::window_creation_flags flags; b32 done; } volatile create_wnd{ .wnd = {}, .flags = creation_flags, .done = false };
 
-		s8 vk_str = stack_s(decltype(vk_str), 128);
+		//TODO(fran): instead of doing this crazy stuff I could hack it, do a SendMessage to a hidden window we create on startup from the other thread & that lives through the entirety of the program
 
-		wchar_t vk_str16[64];
-		//TODO(fran): we maaay want to have this stored in the language file instead?
-		int keynameres = GetKeyNameTextW((LONG)(hk.translation_nfo & (~(LPARAM)(1 << 25))), vk_str16, ArrayCount(vk_str16));
-		//NOTE(fran): set bit 25 to 0 say we dont care about left or right keys (eg Left vs Right Ctrl)
+		::QueueUserAPC(
+			[](ULONG_PTR args) {
+				_create_wnd* create_wnd = (decltype(create_wnd))args;
+				create_wnd->wnd = _OS::_Window(create_wnd->flags);
+				create_wnd->done = true;
+			}
+		, _OS::thread_setup.io_thread, (ULONG_PTR)&create_wnd);
 
-		if (keynameres) {
-			//TODO(fran): 
-			// if keynameres > 2 && IS_HIGH_SURROGATE(vk_str[0]) and advance +2 & keynameres-1
-			if (keynameres > 1) _wcslwr_s(vk_str16 + 1, keynameres); //TODO(fran): better lowercase functions, and work with locales
+		while (!create_wnd.done) {}
 
-			s8 vk_str8 = _OS::convert_to_s8({ .chars = (utf16*)vk_str16, .cnt = (u64)keynameres }); defer{ _OS::free_small_mem(vk_str8.chars); }; //TODO(fran): convert in place, straight to vk_str
+		res = *(OS::window_handle*)(&create_wnd.wnd); //NOTE(fran): removing volatile before being able to copy to a non volatile, this is so dumb
 
-			vk_str += vk_str8;
-		}
-		else {
-			const s8 stringed_vk = VkToString(hk.vk);
-			vk_str += stringed_vk;
-		}
-
-		if (vk_str.cnt) {
-			if (!first_mod) *hotkey_str += u8"+";
-			*hotkey_str += vk_str;
-		}
-	}
-
-	internal window_handle Window(window_creation_flags flags)
-	{
-		window_handle res{ 0 };
-
-		HINSTANCE instance = GetModuleHandleW(nil);
-
-		WNDCLASSEXW wc{ 0 };
-		wc.cbSize = sizeof(wc);
-		wc.style = CS_DBLCLKS;
-		wc.lpfnWndProc = &_OS::UIProc;
-		wc.hInstance = instance;
-		i32 SmallIconX = GetSystemMetrics(SM_CXSMICON);//TODO(fran): GetSystemMetricsForDpi?
-		i32 LargeIconX = GetSystemMetrics(SM_CXICON);
-		local_persistence HICON logo_large = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, LargeIconX, LargeIconX, 0);
-		local_persistence HICON logo_small = (HICON)LoadImageW(instance, MAKEINTRESOURCE(ICO_LOGO), IMAGE_ICON, SmallIconX, SmallIconX, 0);
-		wc.hIcon = logo_large;
-		wc.hIconSm = logo_small;
-		wc.hCursor = nil;// LoadCursorW(nil, IDC_ARROW); //NOTE(fran): do _not_ use the hinstance parameter
-		wc.lpszClassName = appnameL L"_ui_class";
-
-		if (RegisterClassExW(&wc) || (GetLastError() == ERROR_CLASS_ALREADY_EXISTS))
-		{
-#if 1
-			u32 extended_flags = WS_EX_NOREDIRECTIONBITMAP;
-#else //os_managed
-			u32 extended_flags = 0;
-#endif
-#ifndef DEBUG_BUILD
-			extended_flags |= (flags & topmost) ? WS_EX_TOPMOST : 0;
-#endif
-			extended_flags |= (flags & notaskbar) ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW;
-			extended_flags |= (flags & clickthrough) ? WS_EX_LAYERED | WS_EX_TRANSPARENT : 0;
-
-#if 1
-			u32 basic_flags = WS_POPUP;
-#else //os_managed
-			u32 basic_flags = WS_OVERLAPPEDWINDOW;
-#endif
-			basic_flags |= (flags & resizeborder) ? WS_THICKFRAME | WS_MAXIMIZEBOX : 0; //TODO(fran): separate WS_MAXIMIZEBOX as a different flag?
-
-			//SUPER IMPORTANT NOTE(fran): WS_MAXIMIZEBOX is _required_ for the aero window auto-resizing when touching screen borders
-
-			res.hwnd = CreateWindowExW(
-				extended_flags,
-				wc.lpszClassName,
-				appnameL,
-				basic_flags,
-				0, 0, 0, 0,
-				nil, nil, nil, nil);
-
-			UpdateWindow(res.hwnd);
-		}
+		assert(res);
 
 		return res;
+	}
+
+	internal void HotkeyToString(iu::ui_hotkey_data hk, s8* hotkey_str)
+	{
+		//TODO(fran): HACK: handle WM_INPUTLANGCHANGE from the io_thread and change the main thread's language, we cant be calling the io_thread each time we need a hotkey translated or our performance will fall to the floor
+#if 0
+		struct _hktostr { _OS::hotkey_data hk; s8* hotkey_str; b32 done; } volatile hktostr{ .hk = _OS::hotkey_data(hk), .hotkey_str = hotkey_str, .done = false};
+		
+		::QueueUserAPC(
+			[](ULONG_PTR args) {
+				_hktostr* hktostr = (decltype(hktostr))args;
+				_HotkeyToString(hktostr->hk, hktostr->hotkey_str);
+				hktostr->done = true;
+			}
+		, _OS::thread_setup.io_thread, (ULONG_PTR)&hktostr);
+
+		while (!hktostr.done) {}
+#else
+		struct _hktostr { _OS::hotkey_data hk; s8* hotkey_str; } volatile hktostr{ .hk = _OS::hotkey_data(hk), .hotkey_str = hotkey_str };
+
+		SendMessageW(_OS::thread_setup.dummy_wnd, WM_FUNC_HKTOSTR, (WPARAM)&hktostr, 0);
+#endif
 	}
 
 	internal void MoveWindow(window_handle wnd, rc2 placement)
@@ -1148,7 +1353,7 @@ namespace OS
 		::SetCursor(c);
 	}
 
-	//TODO(fran): HACK: it seems to me that only the main thread can set the cursor
+	//TODO(fran): HACK
 	internal void _SetCursor(OS::window_handle wnd, cursor_style cursor)
 	{
 		HCURSOR c;
@@ -1163,7 +1368,7 @@ namespace OS
 		SendMessageW(wnd.hwnd, WM_CUSTOMSETCURSOR, (WPARAM)c, 0);
 	}
 
-	internal f32 GetScalingForWindow(OS::window_handle wnd) //TODO(fran): OS code
+	internal f32 GetScalingForWindow(OS::window_handle wnd)
 	{
 		f32 res;
 
@@ -1266,14 +1471,38 @@ namespace OS
 
 	internal b32 UnregisterSystemGlobalHotkey(OS::window_handle wnd, i32 id)
 	{
-		b32 res = ::UnregisterHotKey(wnd.hwnd, id);
+		b32 res;
+		struct _unreg_hk { OS::window_handle wnd; i32 id; b32 ret; } volatile unreg{ .wnd = wnd, .id = id, .ret = -10 };
+
+		//NOTE(fran): both Register & Unregister global hotkey functions need to be called from the input thread because hotkey msgs are posted to the thread that called the functions
+		::QueueUserAPC( //TODO(fran): in the end SendMessage might simply be a better option save for the caveat of having to define custom messages in the os code. Also QueueUserAPC has a big problem, if the other thread is stalled by the os (eg when moving a window) QueueUserAPC stalls also, we cannot continue to use it
+			[](ULONG_PTR args) {
+				_unreg_hk* unreg = (decltype(unreg))args;
+				unreg->ret = ::UnregisterHotKey(unreg->wnd.hwnd, unreg->id);
+			}
+		, _OS::thread_setup.io_thread, (ULONG_PTR)&unreg);
+
+		while (unreg.ret == -10) {}
+		res = unreg.ret;
 		return res;
 	}
 
-	internal b32 RegisterSystemGlobalHotkey(OS::window_handle wnd, OS::hotkey_data hotkey, i32 hotkey_id)
+	internal b32 RegisterSystemGlobalHotkey(OS::window_handle wnd, iu::ui_hotkey_data hotkey, i32 hotkey_id)
 	{
-		b32 res = RegisterHotKey(wnd.hwnd, hotkey_id, hotkey.mods | MOD_NOREPEAT, hotkey.vk); 
-		//NOTE(fran): if you dont associate the hotkey with any hwnd then it just sends the msg to the current thread with hwnd nil, also documentation says it can not associate the hotkey with a wnd created from another thread
+		b32 res;
+		struct _reg_hk { OS::window_handle wnd; _OS::hotkey_data hotkey; i32 hotkey_id; b32 ret; } volatile reg{ .wnd = wnd, .hotkey = _OS::hotkey_data(hotkey), .hotkey_id = hotkey_id, .ret = -10 };
+
+		::QueueUserAPC(
+			[](ULONG_PTR args) {
+				_reg_hk* reg = (decltype(reg))args;
+				reg->ret = ::RegisterHotKey(reg->wnd.hwnd, reg->hotkey_id, reg->hotkey.mods | MOD_NOREPEAT, reg->hotkey.vk);
+				//TODO(fran): we may want to leave the hwnd as nil and say that global hotkeys are gonna be iu global (inside iu_state) & outside the ui_state
+					//NOTE(fran): if you dont associate the hotkey with any hwnd then it just sends the msg to the current thread with hwnd nil, also documentation says it can not associate the hotkey with a wnd created from another thread
+			}
+		, _OS::thread_setup.io_thread, (ULONG_PTR)&reg);
+
+		while (reg.ret == -10) {}
+		res = reg.ret;
 		return res;
 	}
 
@@ -1283,7 +1512,7 @@ namespace OS
 		//-Microsoft YaHei or UI (look the same,good txt,good jp) (6 codepages) (supported on most versions of windows)
 		//-Microsoft JhengHei or UI (look the same,good txt,ok jp) (3 codepages) (supported on most versions of windows)
 
-		HDC dc = GetDC(GetDesktopWindow()); defer{ ReleaseDC(GetDesktopWindow(),dc); };
+		HDC dc = ::GetDC(::GetDesktopWindow()); defer{ ::ReleaseDC(::GetDesktopWindow(),dc); };
 
 		struct search_font {
 			const char** fontname_options;
@@ -1324,5 +1553,44 @@ namespace OS
 		, (LPARAM)&request, 0);
 
 		return const_temp_s((utf8*)request.match);
+	}
+
+	struct nc_margins { f32 leftwidth, topheight, rightwidth, bottomheight; };
+	//Identifies the standard dimensions of the non client area of a window, taking into account that window's dpi
+	internal nc_margins GetNonClientMargins(f32 dpi_scaling)
+	{
+		nc_margins res;
+		
+		RECT testrc{ 0,0,100,100 };
+		RECT ncrc = testrc;
+
+		local_persistence f32 dpicorrection = OS::GetScalingForSystem(); assert(dpicorrection);
+		//NOTE(fran): AdjustWindowRect retains the dpi of the system when the app started, therefore if we started on a 125% dpi system AdjustWindowRect will _always_ return the value scaled by 1.25f, and so on, in order to correct for that we retrieve the system dpi at the time of our app starting and divide by it to obtain the unscaled result
+			//TODO(fran): BUG: this correction is close but not quite correct
+				//Replicate: start with 100% dpi, change to 150%, h will be 46.5f
+				//           start with 150% dpi, h will be 45.0f  
+
+		//TODO(fran): AdjustWindowRectExForDpi
+		AdjustWindowRect(&ncrc, WS_OVERLAPPEDWINDOW, FALSE/*no menu*/);
+
+		res.leftwidth = (distance(testrc.left, ncrc.left) / dpicorrection) * dpi_scaling;
+		res.topheight = (distance(testrc.top, ncrc.top) / dpicorrection) * dpi_scaling;
+		res.rightwidth = (distance(testrc.right, ncrc.right) / dpicorrection) * dpi_scaling;
+		res.bottomheight = (distance(testrc.bottom, ncrc.bottom) / dpicorrection) * dpi_scaling;
+
+		return res;
+	}
+
+	//Returns the window the user is currently interacting with, which receives mouse & keyboard input (this window may or may not belong to the current process)
+	internal window_handle GetForegroundWindow()
+	{
+		window_handle res = { ::GetForegroundWindow() };
+		return res;
+	}
+
+	internal void SetForegroundWindow(window_handle wnd)
+	{
+		::SetForegroundWindow(wnd.hwnd);
+		//TODO(fran): the new foreground window's thread gets a little more priority from Windows, unfortunately that thread will be our io_thread which we really dont care to prioritize, we'd prefer to prioritize the main thread instead if possible
 	}
 }

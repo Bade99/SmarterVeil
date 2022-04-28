@@ -193,10 +193,10 @@ const_temp_s(u8"Start app 2"), //0xB7
 const_temp_s(u8"undefined 0xB8") , //0xB8
 const_temp_s(u8"undefined 0xB9") , //0xB9
 const_temp_s(u8"OEM specific 0xBA"), //0xBA // ';:' for US
-const_temp_s(u8"'+'"), //0xBB // '+' any country
-const_temp_s(u8"','"), //0xBC // ',' any country
-const_temp_s(u8"'-'"), //0xBD // '-' any country
-const_temp_s(u8"'.'"), //0xBE // '.' any country
+const_temp_s(u8"+"), //0xBB // '+' any country
+const_temp_s(u8","), //0xBC // ',' any country
+const_temp_s(u8"-"), //0xBD // '-' any country
+const_temp_s(u8"."), //0xBE // '.' any country
 const_temp_s(u8"OEM specific 0xBF"), //0xBF // '/?' for US
 const_temp_s(u8"OEM specific 0xC0"), //0xC0 // '`~' for US
 const_temp_s(u8"undefined 0xC1"), //0xC1
