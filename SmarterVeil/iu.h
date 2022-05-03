@@ -389,8 +389,12 @@ struct ui_action {
 typedef UI_STRING_DYN_ID(string_dynamic_id);
 
 enum class ui_string_type {
-    id = 0, str, dynamic_id
+    id = 0, str, dynamic_id, dynamic_str,
     //TODO(fran): BENCHMARK: performance using none vs using an id equal to 0 that always maps to an empty string in hash table element 0
+};
+struct i_s8_fmt {
+    s8 fmt; //IMPORTANT: must be null terminated (TODO(fran): get rid of null termination requirement)
+    virtual s8 generate_string(memory_arena*) = 0;
 };
 struct ui_string {
     ui_string_type type;
@@ -401,6 +405,7 @@ struct ui_string {
             void* context;
             string_dynamic_id* get_str_id;
         } str_dyn_id;
+        i_s8_fmt* dyn_str;
     };
 };
 
@@ -1405,6 +1410,8 @@ internal s8 GetUIStringStr(ui_state* ui, const ui_string& text)
         res = text.str;
     else if (text.type == ui_string_type::dynamic_id)
         res = ui->LanguageManager->GetString(text.str_dyn_id.get_str_id(text.str_dyn_id.context));
+    else if (text.type == ui_string_type::dynamic_str)
+        res = text.dyn_str->generate_string(&ui->LanguageManager->temp_string_arena);
     else crash();
     return res;
 }
@@ -2783,6 +2790,38 @@ internal void UIProcessing(ui_state* ui)
     //SMALL TODO(fran): tiny BUG: right click the titlebar to open the context menu, move the mouse slightly towards the menu, for one frame the mouse icon will change to the arrow with loading circle style before changing back to the arrow
 }
 
+template<typename... Ts>
+struct s8_fmt : i_s8_fmt {
+    std::tuple<Ts...> args; //IMPORTANT: the arguments must be pointers
+
+    s8_fmt(s8 format, Ts... arguments) : args{ arguments... } { this->fmt = format; }
+
+    template<size_t... I>
+    u32 print(utf8* buf, u32 buf_cnt, std::index_sequence<I...>)
+    {
+        i32 res = snprintf((char*)buf, buf_cnt, (char*)this->fmt.chars /*TODO(fran): requires null termination, make our own that receives the fmt char cnt*/
+            , (..., *std::get<I>(this->args))); //TODO(fran): change to using fmt (the library) or creating our own that works with localization (arguments out of order) //TODO(fran): OPTIMIZATION: make sure the tuple disappears and the get() calls get straight mapped to the values without any function call
+        assert(res >= 0); //snprintf returns a negative value if something went wrong
+        return res;
+    }
+
+    s8 generate_string(memory_arena* arena) override //TODO(fran): can we get rid of the virtual call?
+    {
+        u32 cnt = print(nil, 0, std::make_index_sequence<sizeof...(Ts)>()); //TODO(fran): BENCHMARK vs std::string append as we go along
+        utf8* buf = push_arr(arena, utf8, cnt);
+        return { .chars = buf, .cnt = print(buf, cnt, std::make_index_sequence<sizeof...(Ts)>()), .cnt_allocd = cnt };
+    }
+
+    void* operator new(size_t sz, memory_arena* arena)
+    {
+        void* res = push_sz(arena, (u32)sz);
+        return res;
+    }
+    void operator delete(void*, memory_arena*) {} //TODO(fran): can we get rid of this?
+};
+
+#define S8Fmt(arena, s, ...) new (arena) s8_fmt(s, __VA_ARGS__) /*TODO(fran): instead of an s8 also allow for a string id*/
+
 internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_area)
 //TODO(fran): ui_action on_close instead of b32* ?
 {
@@ -3344,8 +3383,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
     //TODO(fran): show:
     //ui->input.text;
     //ui->next_hot;
-    //utf8 scalingstr[20]; snprintf((char*)scalingstr, ArrayCount(scalingstr), "scaling:(%.2f)\n", iu::GetNewScaling(ui)); OutputDebugStringA((char*)scalingstr);
-    //utf8 mousepstr[32]; snprintf((char*)mousepstr, ArrayCount(mousepstr), "mouseP:(%.1f,%.1f)\n", ui->input.mouseP.x, ui->input.mouseP.y); OutputDebugStringA((char*)mousepstr);
+    
     
     ui->element_layers += VSizer(arena, sizer_alignment::top,
         { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based*/,.bounds = {.scale_factor = .3f}}, .element = HSizer(arena, sizer_alignment::left,
@@ -3353,8 +3391,8 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                     .child = VSizer(arena, sizer_alignment::top, 
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Input Text: ")})})},
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Next Hot: ")})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Scaling: ")})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Mouse Pos: ")})})}
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Scaling: %.2f"), &ui->scaling)})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Mouse Pos: (%.1f,%.1f)"), &ui->input.mouseP.x, &ui->input.mouseP.y /* TODO(fran): format custom types (v2*) */)})})}
                     )
                 )}
             )

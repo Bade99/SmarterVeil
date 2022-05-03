@@ -191,7 +191,6 @@ internal HWND CreateVeilWindow()
 
 int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 {
-
     HWND veil = CreateVeilWindow();
     if (!veil) return 0;
 
