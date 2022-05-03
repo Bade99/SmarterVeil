@@ -25,6 +25,14 @@ enum class vert_text_align {
 #define safe_call(funcptr, ...) if(funcptr) funcptr(__VA_ARGS__); else 0
 
 template<typename T>
+struct reverse { //Reference: https://www.fluentcpp.com/2020/02/11/reverse-for-loops-in-cpp/
+    T& iterable_;
+    explicit reverse(T& iterable) : iterable_{ iterable } {}
+    auto begin() const { return std::rbegin(iterable_); }
+    auto end() const { return std::rend(iterable_); }
+};
+
+template<typename T>
 struct fixed_array_header {
     u64 cnt;
     T* arr;
@@ -50,7 +58,7 @@ struct fixed_array_header {
     }
 
 };
-
+struct ui_element;
 template<typename T, u64 _cnt>
 struct fixed_array { //TODO(fran): move to basic_array.h
     u64 cnt; //cnt in use / cnt_used
@@ -74,26 +82,19 @@ struct fixed_array { //TODO(fran): move to basic_array.h
 
     void clear() { this->cnt = 0; zero_struct(this->arr); }
 
-#if 0
-    fixed_array<T, _cnt>& operator+=(const T e)//TODO(fran): see if this is a good idea
+#if 1
+    fixed_array<T, _cnt>& operator+=(T e)//TODO(fran): see if this is a good idea
     {
         if (this->cnt + 1 > this->cnt_allocd()) crash();
         this->arr[this->cnt++] = e;
         return *this;
     }
-
-    fixed_array<T, _cnt>& add(const T e)
-    {
-        return this += e;
-    }
-#endif
 
     fixed_array<T, _cnt>& add(T e)
     {
-        if (this->cnt + 1 > this->cnt_allocd()) crash();
-        this->arr[this->cnt++] = e;
-        return *this;
+        return *this += e;
     }
+#endif
 
     fixed_array<T, _cnt>& remove_idx(u64 idx)
     {
@@ -113,25 +114,27 @@ struct fixed_array { //TODO(fran): move to basic_array.h
         for (auto& e : elems) this->arr[this->cnt++] = e;
     }
 
-    T* begin()
-    {
-        return this->cnt ? &arr[0] : nullptr;
-    }
+#if 0
+    T* begin() { return this->cnt ? &arr[0] : nullptr; }
+    T* end() { return this->cnt ? &arr[0] + this->cnt : nullptr; }
+    const T* begin() const { return this->cnt ? &arr[0] : nullptr; }
+    const T* end() const { return this->cnt ? &arr[0] + this->cnt : nullptr; }
 
-    T* end()
-    {
-        return this->cnt ? &arr[0] + this->cnt : nullptr;
-    }
+    T* rbegin() { auto end = this->end(); return end ? --end : nullptr; }
+    T* rend() { auto begin = this->begin(); return begin ? --begin : nullptr; }
+    const T* rbegin() const { auto end = this->end(); return end ? --end : nullptr; }
+    const T* rend() const { auto begin = this->begin(); return begin ? --begin : nullptr; }
+#else
+    T* begin() { return &arr[0]; }
+    const T* begin() const { return &arr[0]; }
+    T* end() { return &arr[0] + this->cnt; }
+    const T* end() const { return &arr[0] + this->cnt; }
 
-    const T* begin() const
-    {
-        return this->cnt ? &arr[0] : nullptr;
-    }
-
-    const T* end() const
-    {
-        return this->cnt ? &arr[0] + this->cnt : nullptr;
-    }
+    std::reverse_iterator<T*> rbegin() { return std::reverse_iterator(this->end()); }
+    std::reverse_iterator<T*> rend() { return std::reverse_iterator(this->begin()); }
+    std::reverse_iterator<const T*> rbegin() const { return std::reverse_iterator(this->end()); } //TODO(fran): not sure this is how you make const iterators
+    std::reverse_iterator<const T*> rend() const { return std::reverse_iterator(this->begin()); }
+#endif
 
     operator fixed_array_header<T>() { return {this->cnt, this->arr}; }
 };
@@ -593,7 +596,7 @@ struct ui_state {
     b32 render_and_update_screen;
     b32 is_context_menu;
 
-    ui_element* elements;
+    fixed_array<ui_element*, 10> element_layers;
     memory_arena permanent_arena;//NOTE(fran): UI elements are placed here
     //memory_arena one_frame_arena;//NOTE(fran):
     ui_action OnClose; //TODO(fran): see how to make the whole 'close' concept official
@@ -863,7 +866,7 @@ namespace iu {
                     }
         }
 
-#ifdef DEBUG_BUILD
+#ifdef DEBUG_BUILD //Print input text received from the OS
         auto w = OS::GetForegroundWindow();
         for (auto& a : actives)
             for (auto& ui : a)
@@ -937,7 +940,7 @@ namespace iu {
 
         res->LanguageManager = AcquireLanguageManager();
 
-        res->elements = nil;
+        res->element_layers = {};
 
         res->input.mouseP = res->input.screen_mouseP =
 #ifdef DEBUG_BUILD
@@ -2163,9 +2166,8 @@ internal void RenderUI(ui_state* ui)
 {
     BeginRender(&ui->renderer, ui->placement.wh);
     
-    ui_element* element = ui->elements;
-
-    RenderElement(ui, element);
+    for(auto& layer : ui->element_layers)
+        RenderElement(ui, layer);
 
     if constexpr (const b32 render_mouse = false; render_mouse) TESTRenderMouse(&ui->renderer, ui->input.mouseP);
 
@@ -2660,20 +2662,22 @@ internal v2 ResizeElement(ui_state* ui, rc2 bounds, ui_element* element)
 
 internal void PrintNextHot(input_results* input_res)
 {
+    const char* s;
     if (input_res->next_hot)
         switch (input_res->next_hot->type)
         {
-            case ui_type::sizer: OutputDebugStringA("Sizer\n"); break; //TODO(fran): LOGGER
-            case ui_type::vpad: OutputDebugStringA("Vpad\n"); break;
-            case ui_type::hpad: OutputDebugStringA("Hpad\n"); break;
-            case ui_type::background: OutputDebugStringA("Background\n"); break;
-            case ui_type::button: OutputDebugStringA("Button\n"); break;
-            case ui_type::slider: OutputDebugStringA("Slider\n"); break;
-            case ui_type::hotkey: OutputDebugStringA("Hotkey\n"); break;
-            case ui_type::contextmenu_button: OutputDebugStringA("Context Menu Button\n"); break;
-            default: crash(); break;
+            case ui_type::sizer: s = "Sizer\n"; break; //TODO(fran): LOGGER
+            case ui_type::vpad: s = "Vpad\n"; break;
+            case ui_type::hpad: s = "Hpad\n"; break;
+            case ui_type::background: s = "Background\n"; break;
+            case ui_type::button: s = "Button\n"; break;
+            case ui_type::slider: s = "Slider\n"; break;
+            case ui_type::hotkey: s = "Hotkey\n"; break;
+            case ui_type::contextmenu_button: s = "Context Menu Button\n"; break;
+            default: s = ""; crash(); break;
         }
-    else  OutputDebugStringA("*None*\n");
+    else  s = "*None*\n";
+    OutputDebugStringA(s);
 }
 
 internal void UIProcessing(ui_state* ui)
@@ -2725,19 +2729,28 @@ internal void UIProcessing(ui_state* ui)
 
     utf8 mousepstr[32]; snprintf((char*)mousepstr, ArrayCount(mousepstr), "mouseP:(%.1f,%.1f)\n", ui->input.mouseP.x, ui->input.mouseP.y); OutputDebugStringA((char*)mousepstr);
 
-    input_results input_res = InputUpdate(ui->elements, &ui->input); //TODO(fran): retrieve the input from inside the function
+    input_results input_res;
+
+    for (auto& layer : reverse(ui->element_layers))
+    {
+        input_res = InputUpdate(layer, &ui->input);
+        if (input_res.next_hot) break;
+    }
+
     PrintNextHot(&input_res);
 
     InputProcessing(ui, input_res.next_hot, &ui->input);
 
     //TODO(fran): disable IME window
 
-    assert(ui->elements->type == ui_type::sizer || ui->elements->type == ui_type::subelement_table);
+    for (auto& layer : ui->element_layers)
+    { assert(layer->type == ui_type::sizer || layer->type == ui_type::subelement_table); }
     //TODO(fran): multiple root elements
 
     f32 offsetY = IsWindowMaximized(ui->wnd) ? OS::GetWindowTopMargin(ui->wnd) : 0;
     //TODO(fran): handle EnableRendering inside ResizeElement?
-    ResizeElement(ui, { 0, offsetY, ui->placement.w, ui->placement.h - offsetY }, ui->elements); //TODO(fran): find correct place to do resizing, before input processing? before render? after everything?
+    for (auto& layer : ui->element_layers)
+        ResizeElement(ui, { 0, offsetY, ui->placement.w, ui->placement.h - offsetY }, layer); //TODO(fran): find correct place to do resizing, before input processing? before render? after everything?
 
     //TODO(fran): BUG: when resizing the window the mouse position isnt updated, which means that if some element gets resized over where the mouse last was it will change its style to mouseover
     
@@ -2893,7 +2906,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
     element_sizing_desc noneditabletext_sizing =
     {
         .type = element_sizing_type::font,
-        .font = {.w_extra_chars = 2},
+        .font = {.v_scale_factor = 1.f, .w_extra_chars = 2},
     };
     element_sizing_desc minmaxclose_sizing =
     {
@@ -3224,7 +3237,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
 
         ui_cursor Hand = {.type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
 
-        ui->context_menu->elements = SubelementTable(arena, 3,
+        ui->context_menu->element_layers += SubelementTable(arena, 3,
             //TODO(fran): disable Restore when not maximized & Move,Size,Maximize when maximized
             {
                 .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}},
@@ -3288,7 +3301,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
     contextmenu_ctx->ui = ui;
     contextmenu_ctx->close = close;
 
-    ui->elements = /*v*/ VSizer(arena, sizer_alignment::top,
+    ui->element_layers += /*v*/ VSizer(arena, sizer_alignment::top,
         { .sizing = os_nonclient_top, .element = /*h*/ HSizer(arena, sizer_alignment::left,
                 {.sizing = full_bounds_sizing, .element = /*nc_bk*/ Background(.arena = arena, .theme = &nonclient_bk_theme, .on_click = {.context = ui, .action = Move}, .on_doubleclick = {.context = ui, .action = Caption_MaximizeOrRestore}, .on_unrclick = {.context = contextmenu_ctx, .action = ContextMenu},
                     .child = /*nc_v*/ VSizer(arena, sizer_alignment::top,
@@ -3308,6 +3321,45 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         ) },
         { .sizing = remaining_sizing, .element = client_area } //TODO(fran): better if the user received where to place their ui
     );
+
+#ifdef DEBUG_BUILD
+    background_theme test_bk_theme =
+    {
+        .color =
+        {
+            .background =
+            {
+                .normal = {0.2f,0.2f,0.2f,0.75f},
+                .mouseover = test_bk_theme.color.background.normal,
+                .pressed = test_bk_theme.color.background.normal,
+            },
+        },
+        .dimension =
+        {
+            .border_thickness = 0,
+        },
+        .style = ui_style::rect,
+    };
+
+    //TODO(fran): show:
+    //ui->input.text;
+    //ui->next_hot;
+    //utf8 scalingstr[20]; snprintf((char*)scalingstr, ArrayCount(scalingstr), "scaling:(%.2f)\n", iu::GetNewScaling(ui)); OutputDebugStringA((char*)scalingstr);
+    //utf8 mousepstr[32]; snprintf((char*)mousepstr, ArrayCount(mousepstr), "mouseP:(%.1f,%.1f)\n", ui->input.mouseP.x, ui->input.mouseP.y); OutputDebugStringA((char*)mousepstr);
+    
+    ui->element_layers += VSizer(arena, sizer_alignment::top,
+        { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based*/,.bounds = {.scale_factor = .3f}}, .element = HSizer(arena, sizer_alignment::left,
+                {.sizing = {.type = element_sizing_type::bounds, .bounds = {.scale_factor = .2f}, } , .element = Background(.arena = arena, .theme = &test_bk_theme, /*.on_click = TODO(fran): show/hide(small height)*/
+                    .child = VSizer(arena, sizer_alignment::top, 
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Input Text: ")})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Next Hot: ")})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Scaling: ")})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Mouse Pos: ")})})}
+                    )
+                )}
+            )
+        });
+#endif
 
     ui->OnClose = { .context = close, .action = common_ui_actions::B32_Set };
 
