@@ -233,6 +233,7 @@ internal iu::ui_key VkToIuKey(u8 vk)
 	switch (vk)
 	{
 #define _vk_k_mapping(mapping) \
+	mapping(0, (iu::ui_key)0)					   \
 	mapping(VK_ESCAPE, iu::ui_key::Esc)					   \
 	mapping(VK_F1, iu::ui_key::F1)						   \
 	mapping(VK_F2, iu::ui_key::F2)						   \
@@ -370,7 +371,7 @@ internal iu::ui_key VkToIuKey(u8 vk)
 		OutputDebugStringA("Win32 WARNING: unhandled virtual key: ");
 		OutputDebugStringA((char*)VkToString(vk).chars);
 		OutputDebugStringA("\n");
-		return iu::ui_key::Shift; //TODO(fran): return null key? tell the caller not to use the key? leave it like this?
+		return (iu::ui_key)0; //TODO(fran): return null key? tell the caller not to use the key? leave it like this?
 	}
 	}
 }
@@ -385,7 +386,7 @@ internal u8 IuKeyToVk(iu::ui_key k)
 	{
 		OutputDebugStringA("[WARNING][Win32]: unhandled Iu key with value: ");
 		char buf[16]; sprintf_s(buf, 16, "%d\n", k); OutputDebugStringA(buf); //TODO(fran): auto generated enum value names
-		return VK_SHIFT; //TODO(fran): return null key? tell the caller not to use the key? leave it like this?
+		return 0; //TODO(fran): return null key? tell the caller not to use the key? leave it like this?
 	}
 	}
 }
@@ -817,7 +818,7 @@ definition internal void io_thread_handler()
 			{
 			case WM_LBUTTONDOWN:
 			{
-				SetCapture(msg.hwnd);
+				SetCapture(msg.hwnd); //NOTE(fran): SetCapture must be called from the same thread that created the hwnd
 				iu::PushEventMouseButton(wnd, iu::ui_key::MouseLeft, iu::ui_key_state::clicked);
 			} break;
 			case WM_LBUTTONDBLCLK:
@@ -853,6 +854,8 @@ definition internal void io_thread_handler()
 
 				iu::PushEventMousePos(wnd, v2_from(p.x, p.y), v2_from(screenP.x, screenP.y));
 			} break;
+			//TODO(fran) : may be good to send WM_NCMOUSEMOVE as mousemove to the ui too, to handle cases where the mouse goes from the client area to the nonclient
+			//TODO(fran)?: send WM_NCMOUSEMOVE WM_NCLBUTTONDOWN messages to the ui as normal mouse messages and have the ui code decide when to send this real messages to the wndproc, that way we allow for the ui to decide where the OS features should be active, allowing for, for example, have the close/max/min buttons block the resize border in their region
 			case WM_MOUSELEAVE:
 			{
 				v2 mouseP =
@@ -973,34 +976,6 @@ internal f32 GetScalingForMonitor(HMONITOR monitor) //TODO(fran): OS code
 	return res;
 }
 
-}
-
-//NOTE(fran): services provided by the OS to the application
-
-//IMPORTANT: for filepaths use / instead of \\, since / should be supported by default in all OSs
-
-namespace OS
-{
-#if 0
-	struct hotkey_data {
-		u8 vk;    //Virtual Key
-		u16 mods; //Hotkey modifiers: ctrl, alt, shift
-		LPARAM translation_nfo; //Extra information needed by Windows when converting hotkey to text, specifically scancode + extended key flag
-
-		b32 has_hotkey()
-		{
-			b32 res = this->vk || this->mods;
-			return res;
-		}
-
-		b32 is_different(hotkey_data hotkey_to_compare)
-		{
-			b32 res = this->vk != hotkey_to_compare.vk || this->mods != hotkey_to_compare.mods;
-			return res;
-		}
-	};
-#endif
-
 	struct _work_folder {
 		s8 dir_str;
 
@@ -1016,7 +991,7 @@ namespace OS
 
 		~_work_folder() { _OS::free_small_mem(dir_str.chars); };
 	}global_persistence work_folder;
-
+	
 	struct _set_sleep_resolution {
 		u32 desired_scheduler_ms = 1;
 		
@@ -1037,6 +1012,26 @@ namespace OS
 		}
 
 	}global_persistence set_sleep_resolution;
+
+}
+
+//NOTE(fran): services provided by the OS to the application
+
+//IMPORTANT: for filepaths use / instead of \\, since / should be supported by default in all OSs
+
+namespace OS
+{
+	internal s8 GetWorkFolder() //TODO(fran): not yet sure whether we want to provide this functionality or not
+	{
+		s8 res = _OS::work_folder.dir_str;
+		return res;
+	}
+	//Returns value in milliseconds (1.0f == 1ms)
+	internal f32 GetSleepResolution() //TODO(fran): not yet sure whether we want to provide this functionality or not
+	{
+		f32 res = _OS::set_sleep_resolution.desired_scheduler_ms;
+		return res;
+	}
 
 	internal bool write_entire_file(const s8 filename, void* memory, u64 mem_sz)
 	{
@@ -1065,7 +1060,7 @@ namespace OS
 			}
 		}
 
-		if (res) res = MoveFileW((wchar_t*)temp.chars, (wchar_t*)windows_filename.chars);
+		if (res) res = MoveFileExW((wchar_t*)temp.chars, (wchar_t*)windows_filename.chars, MOVEFILE_REPLACE_EXISTING); //TODO(fran): MOVEFILE_COPY_ALLOWED
 		else DeleteFileW((wchar_t*)temp.chars);
 
 		return res;
@@ -1089,7 +1084,7 @@ namespace OS
 			if (LARGE_INTEGER sz; GetFileSizeEx(hFile, &sz)) {
 				assert(sz.QuadPart <= U32MAX);
 				u32 sz32 = sz.QuadPart;
-				void* mem = VirtualAlloc(0, sz32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);//TOOD(fran): READONLY?
+				void* mem = VirtualAlloc(0, sz32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);//TODO(fran): READONLY?
 				if (mem) {
 					if (DWORD bytes_read; ReadFile(hFile, mem, sz32, &bytes_read, 0) && sz32 == bytes_read) {
 						//SUCCESS
@@ -1105,8 +1100,8 @@ namespace OS
 		return res;
 	}
 
-#define locale_max_length (LOCALE_NAME_MAX_LENGTH*2) /*utf8 length*/
-	//NOTE(fran): the string must be able to contain locale_max_length characters
+	constexpr u32 locale_max_length = LOCALE_NAME_MAX_LENGTH * 2; /*utf8 length*/
+	//NOTE: the string must be able to contain OS::locale_max_length characters
 	internal void GetUserLocale(s8* res)
 	{
 		assert((res->cnt_allocd - res->cnt) >= locale_max_length);
@@ -1145,23 +1140,9 @@ namespace OS
 	internal void HotkeyToString(iu::ui_hotkey_data hk, s8* hotkey_str)
 	{
 		//TODO(fran): HACK: handle WM_INPUTLANGCHANGE from the io_thread and change the main thread's language, we cant be calling the io_thread each time we need a hotkey translated or our performance will fall to the floor
-#if 0
-		struct _hktostr { _OS::hotkey_data hk; s8* hotkey_str; b32 done; } volatile hktostr{ .hk = _OS::hotkey_data(hk), .hotkey_str = hotkey_str, .done = false};
-		
-		::QueueUserAPC(
-			[](ULONG_PTR args) {
-				_hktostr* hktostr = (decltype(hktostr))args;
-				_HotkeyToString(hktostr->hk, hktostr->hotkey_str);
-				hktostr->done = true;
-			}
-		, _OS::thread_setup.io_thread, (ULONG_PTR)&hktostr);
-
-		while (!hktostr.done) {}
-#else
 		struct _hktostr { _OS::hotkey_data hk; s8* hotkey_str; } volatile hktostr{ .hk = _OS::hotkey_data(hk), .hotkey_str = hotkey_str };
 
 		SendMessageW(_OS::thread_setup.dummy_wnd, WM_FUNC_HKTOSTR, (WPARAM)&hktostr, 0);
-#endif
 	}
 
 	internal void MoveWindow(window_handle wnd, rc2 placement)
@@ -1199,6 +1180,8 @@ namespace OS
 	{
 		ShowWindow(wnd.hwnd, SW_MAXIMIZE);
 	}
+	//TODO(fran): FullscreenWindow (cover the whole screen)
+	//TODO(fran): Maximize to all monitors
 
 	internal void RestoreWindow(window_handle wnd)
 	{
@@ -1206,7 +1189,7 @@ namespace OS
 	}
 
 	// Minimizes a window and creates an animation to make it look like it goes to the tray
-	internal void MinimizeWndToTray(window_handle wnd)
+	internal void MinimizeWindowToTray(window_handle wnd)
 	{//Thanks to: https://www.codeproject.com/Articles/735/Minimizing-windows-to-the-System-Tray
 		if (_OS::GetDoAnimateMinimize())
 		{
@@ -1223,7 +1206,7 @@ namespace OS
 	}
 
 	// Restores a window and makes it look like it comes out of the tray and makes it back to where it was before minimizing
-	internal void RestoreWndFromTray(window_handle wnd)
+	internal void RestoreWindowFromTray(window_handle wnd)
 	{//Thanks to: https://www.codeproject.com/Articles/735/Minimizing-windows-to-the-System-Tray
 		if (_OS::GetDoAnimateMinimize())
 		{
@@ -1248,7 +1231,7 @@ namespace OS
 	internal b32 IsWindowVisible(window_handle wnd)
 	{
 		//TODO(fran): not sure IsWindowVisible is completely foolproof
-		b32 res = IsWindowVisible(wnd.hwnd);
+		b32 res = ::IsWindowVisible(wnd.hwnd);
 		return res;
 	}
 

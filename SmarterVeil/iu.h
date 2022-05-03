@@ -649,7 +649,7 @@ internal language_manager* AcquireLanguageManager() //TODO(fran): maybe this sho
 
         res->load_languages_from_disc();
 
-        utf8 language_to_use[locale_max_length] = u8"en-us"; //TODO(fran): get from config file
+        utf8 language_to_use[OS::locale_max_length] = u8"en-us"; //TODO(fran): get from config file
 
         res->ChangeLanguage(temp_s(language_to_use));
     }
@@ -696,7 +696,7 @@ namespace iu {
                 for (auto& ui : a)
                     ReleaseUIState(ui);
 
-            VirtualFree((void*)this->arena.base, 0, MEM_RELEASE);
+            VirtualFree((void*)this->arena.base, 0, MEM_RELEASE); //TODO(fran): RACE CONDITION: even though we already destroyed all OS windows a msg could still exist in the OS's message queue and thus when the OS code tries to push it to us the memory for our event queue is already freed and we crash
             zero_struct(this->arena);
             //fixed_array_header<ui_state*> arrs[] = { windows.active, windows.inactive, contextmenuwindows.active, contextmenuwindows.inactive };
             //for(auto& a : arrs)
@@ -1352,12 +1352,12 @@ namespace common_ui_actions
         //TODO(fran): check for active tray icon, otherwise do normal minimize
         ui_state* ui = (decltype(ui))context;
         if (!OS::IsWindowVisible(ui->wnd)) { //window is minimized
-            RestoreWndFromTray(ui->wnd);
+            RestoreWindowFromTray(ui->wnd);
             //TODO(fran): the veil could be occluded, we should check that the veil is on top too
         }
         else {
             //TODO(fran): the window could be occluded (in which case we want to SW_SHOW), there doesnt seem to be an easy way to know whether your window is actually visible to the user
-            MinimizeWndToTray(ui->wnd);
+            MinimizeWindowToTray(ui->wnd);
         }
     };
 
@@ -1417,7 +1417,7 @@ internal void EnableRendering(ui_state* ui, b32 enable)
 }
 internal b32 IsRenderingEnabled(ui_state* ui)
 {
-    b32 res = ui->render_and_update_screen;
+    b32 res = ui->render_and_update_screen && OS::IsWindowVisible(ui->wnd);
     return res;
 }
 
@@ -2077,7 +2077,7 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             
             rc2 text_rc_bk = MeasureText(font, text.chars, text.cnt, element->placement, horz_text_align::center, vert_text_align::center, true);
 
-            sz2 avg_char = MeasureAverageTextCharacter(font);
+            sz2 avg_char = MeasureAverageTextCharacter(font); avg_char.w *= 2; //TODO(fran): MeasureText is horribly wrong, how can that be? is it me or DirectWrite?
 
             text_rc_bk = scalefromcenterconst_rc(text_rc_bk, avg_char);
 
@@ -2663,7 +2663,7 @@ internal void PrintNextHot(input_results* input_res)
     if (input_res->next_hot)
         switch (input_res->next_hot->type)
         {
-            case ui_type::sizer: OutputDebugStringA("Sizer\n"); break;
+            case ui_type::sizer: OutputDebugStringA("Sizer\n"); break; //TODO(fran): LOGGER
             case ui_type::vpad: OutputDebugStringA("Vpad\n"); break;
             case ui_type::hpad: OutputDebugStringA("Hpad\n"); break;
             case ui_type::background: OutputDebugStringA("Background\n"); break;
@@ -2674,31 +2674,6 @@ internal void PrintNextHot(input_results* input_res)
             default: crash(); break;
         }
     else  OutputDebugStringA("*None*\n");
-}
-
-internal void ScaleUIFont(iu::ui_renderer* r, f32 last_scaling, f32 new_scaling)
-{
-    auto font_factory = r->renderer2D.font.fontFactory;
-    auto& font = r->renderer2D.font.font;
-    auto font_weight = font->GetFontWeight();
-    auto font_style = font->GetFontStyle();
-    auto font_stretch = font->GetFontStretch();
-    auto font_size = font->GetFontSize() * new_scaling / last_scaling;
-    WCHAR font_name[256]; /*font_name[0] = 0;*/
-    font->GetFontFamilyName(font_name,ArrayCount(font_name));
-    
-    d3d_SafeRelease(font);
-    font_factory->CreateTextFormat(
-        font_name,
-        nil /*Font collection*/,
-        font_weight,
-        font_style,
-        font_stretch,
-        font_size,
-        L"en-us", //TODO(fran): consider locale (with OS::GetUserLocale())? (in my opinion it's just pointless, why does it matter?)
-        &font
-    );
-    assert(font);
 }
 
 internal void UIProcessing(ui_state* ui)
@@ -2743,7 +2718,7 @@ internal void UIProcessing(ui_state* ui)
         if (ui->scaling != ui->_last_scaling)
         {
             EnableRendering(ui);
-            ScaleUIFont(&ui->renderer, ui->_last_scaling, ui->scaling);
+            ScaleFont(&ui->renderer.renderer2D.font, ui->_last_scaling, ui->scaling);
         }
         ui->_last_scaling = ui->scaling;
     }
@@ -3284,7 +3259,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
             // -define that right aligned sizers, when having an unbound rightmost position become left aligned sizers
             // (maybe I need both)
 
-        //TODO(fran): a better idea instead of trying to replicate html style layouting can be to simply do it immediate mode style, if we want to create a sublayout we simply call sublayout, and then start placing stuff in the by calling other functions, eg:
+        //TODO(fran): a better idea instead of trying to replicate html style layouting can be to simply do it immediate mode style, if we want to create a sublayout we simply call sublayout, and then start placing stuff in by calling other functions, eg:
             // Layout("layout")
             //    Layout("top")
             //      Button()

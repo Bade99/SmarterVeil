@@ -5,7 +5,7 @@ namespace iu{
     //TODO(fran): I'd really prefer to make the whole Iu solution into one single .h file but I havent found a way to do it yet
 
 enum class ui_key : u8{ //TODO(fran): convert to namespace + annonymous enum so this names dont leak into the codebase, or enum class if possible
-    MouseLeft /*Left Click*/, MouseRight /*Right Click*/, MouseMiddle /*Scrollwheel/Middlebutton Click*/, MouseExtra1, MouseExtra2 /*Extra mouse buttons, usually used for forwards/backwards navigation (eg in a browser)*/,
+    MouseLeft=1 /*Left Click*/, MouseRight /*Right Click*/, MouseMiddle /*Scrollwheel/Middlebutton Click*/, MouseExtra1, MouseExtra2 /*Extra mouse buttons, usually used for forwards/backwards navigation (eg in a browser)*/,
     Esc,
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24,
     A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, //TODO(fran): Ñ

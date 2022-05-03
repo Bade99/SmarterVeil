@@ -139,7 +139,7 @@ internal d2d_renderer AcquireD2DRenderer(d3d11_renderer* d3d_renderer, f32 scali
         DWRITE_FONT_WEIGHT_REGULAR,
         DWRITE_FONT_STYLE_NORMAL,
         DWRITE_FONT_STRETCH_NORMAL,
-        Point(12.0f)* scaling,
+        Point(11.0f)* scaling,
         L"en-us", //TODO(fran): consider locale? (in my opinion it's just pointless)
         &res.font.font
     );
@@ -164,6 +164,30 @@ internal void ReleaseD2DRenderer(d2d_renderer* renderer)
     *renderer = { 0 };
 }
 
+internal void ScaleFont(ui_font* f, f32 last_scaling, f32 new_scaling) //TODO(fran): TEST code: last_scaling should be removed and replaced by some other concept
+{
+    auto font_factory = f->fontFactory;
+    auto& font = f->font;
+    auto font_weight = font->GetFontWeight();
+    auto font_style = font->GetFontStyle();
+    auto font_stretch = font->GetFontStretch();
+    auto font_size = font->GetFontSize() * new_scaling / last_scaling;
+    WCHAR font_name[256]; /*font_name[0] = 0;*/
+    font->GetFontFamilyName(font_name, ArrayCount(font_name));
+
+    d3d_SafeRelease(font);
+    font_factory->CreateTextFormat(
+        font_name,
+        nil /*Font collection*/,
+        font_weight,
+        font_style,
+        font_stretch,
+        font_size,
+        L"en-us", //TODO(fran): consider locale (with OS::GetUserLocale())? (in my opinion it's just pointless, why does it matter?)
+        &font
+    );
+    assert(font);
+}
 
 internal d3d11_renderer AcquireD3D11Renderer(HWND wnd)
 {

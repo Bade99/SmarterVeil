@@ -69,7 +69,8 @@ static_assert((sizeof(renderer_const_buffer) % 16) == 0);
 
 struct d3d11_desktop_duplication {
     IDXGIOutputDuplication* duplicator;
-    ID3D11Device* linked_device; //NOFREE: this device belongs to the d3d11_renderer, do _not_ release it
+    //ID3D11Device* linked_device; //NOFREE: this device belongs to the d3d11_renderer, do _not_ release it
+    d3d11_renderer* linked_renderer;
     //ID3D11Texture2D* new_desktop_texture;// m_AcquiredDesktopImage;
     u32 output_number;
     DXGI_OUTPUT_DESC output_description;
@@ -191,18 +192,18 @@ internal void ReleaseD3D11Renderer(d3d11_renderer* renderer)
     *renderer = ZeroRenderer;
 }
 
-internal d3d11_desktop_duplication AcquireD3D11DesktopDuplication(const d3d11_renderer* linked_renderer) 
+internal d3d11_desktop_duplication AcquireD3D11DesktopDuplication(d3d11_renderer* linked_renderer) 
 {
     d3d11_desktop_duplication res {0};
 
     res.output_number = 0; //TODO(fran): apparently you need to capture each monitor separately, if there's more than one
 
-    res.linked_device = linked_renderer->device;
+    res.linked_renderer = linked_renderer;
     //res.linked_device->AddRef(); // Take a reference on the device //TODO(fran): probably remove this
 
     // Get DXGI adapter
     IDXGIAdapter* DxgiAdapter {0};
-    TESTHR(linked_renderer->dxgiDevice->GetParent(__uuidof(DxgiAdapter), reinterpret_cast<void**>(&DxgiAdapter))
+    TESTHR(res.linked_renderer->dxgiDevice->GetParent(__uuidof(DxgiAdapter), reinterpret_cast<void**>(&DxgiAdapter))
         , "Failed to get parent DXGI Adapter");
     defer{ d3d_SafeRelease(DxgiAdapter); };
     
@@ -221,9 +222,8 @@ internal d3d11_desktop_duplication AcquireD3D11DesktopDuplication(const d3d11_re
         , "Failed to QueryInterface for DxgiOutput1");
     defer{ d3d_SafeRelease(DxgiOutput1); };
 
-
     // Create desktop duplication
-    TESTHR(DxgiOutput1->DuplicateOutput(res.linked_device, &res.duplicator)
+    TESTHR(DxgiOutput1->DuplicateOutput(res.linked_renderer->device, &res.duplicator)
         , "Failed to duplicate desktop output");
     //NOTE(fran): hresult could be equal to DXGI_ERROR_NOT_CURRENTLY_AVAILABLE, which means that the max number of apps using Desktop Duplication API was reached, so the user should try closing one and then try again, this probably has not happened to anyone ever in the history of Windows
 
@@ -261,7 +261,13 @@ internal ID3D11Texture2D* GetNewDesktopImage(d3d11_desktop_duplication* desktop_
     if (FAILED(hr))
     {
         if (hr != DXGI_ERROR_WAIT_TIMEOUT)
-            ShowErrorMsg("Failed to get new desktop image");
+        {
+            //TODO(fran): once we get an outstanding error from the desktop duplicator we have to destroy, recreate & reattach it to the dxgi device that it duplicates, the problem is that the device can only have 4 duplicators attached & you cant detach a duplicator! (brilliant Windows!), therefore this solution only works the first 4 times a display change happens, after that we crash. Therefore what we should do is regenerate the device too
+            auto linked_renderer = desktop_duplication->linked_renderer;//TODO(fran): quick HACK
+            ReleaseD3D11DesktopDuplication(desktop_duplication);
+            *desktop_duplication = AcquireD3D11DesktopDuplication(linked_renderer);
+            //ShowErrorMsg("Failed to get new desktop image");
+        }
         return res;
     }
 

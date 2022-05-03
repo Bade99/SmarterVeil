@@ -140,26 +140,18 @@ template<typename F> Defer<F> operator+(defer_dummy, F && f) { return makeDefer<
 
 LRESULT CALLBACK VeilProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) //TODO(fran): it's pointless to have this, anything that's here should be moved to the ui code
 {
-    //auto _msgName = msgToString(message); OutputDebugStringA(_msgName); OutputDebugStringA("\n");
     switch (message)
     {
-        case WM_CLOSE:
-        case WM_DESTROY:
-        {
-            PostQuitMessage(0);
-        } break;
-        case WM_DISPLAYCHANGE://indicates change in the display resolution
+        case WM_DISPLAYCHANGE://indicates change in the display resolution & refresh rate
         {
             // Make sure the Veil window remains maximized in the new display
             if (IsWindowVisible(hWnd)) ShowWindow(hWnd, SW_MAXIMIZE);
+            goto default_handling;
         } break;
         //TODO(fran): WM_DEVICECHANGE apparently tells you when a new monitor has been installed, we should maximize in that case as well
-        /*case WM_SIZE:
-        {
-            PostThreadMessageW(RenderThreadID, Message, WParam, LParam);
-        } break;*/
         default:
         {
+        default_handling:
             return DefWindowProcW(hWnd, message, wParam, lParam);
         } break;
     }
@@ -184,34 +176,17 @@ internal HWND CreateVeilWindow()
             ClickThroughFlags | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOREDIRECTIONBITMAP,
             wc.lpszClassName,
             L"Veil",
-#define VEILCOMPOSITORTEST 0
-#if VEILCOMPOSITORTEST 
-            WS_POPUP | WS_THICKFRAME,
-            50, 50, 500, 500,
-#else
             WS_POPUP,
             0, 0, 0, 0,
-#endif
-            0, 0, 0, 0);
+            nil, nil, nil, nil);
         //NOTE(fran): apparently WS_EX_NOREDIRECTIONBITMAP is not necessary for the veil to work with D3D, at least on Windows 10. It's a different question whether performance will be afected by removing it
-        //TODO(fran): look for another way to make the window click through without having to use the ClickThroughFlags (I feel like WS_EX_LAYERED is gonna destroy our performance somehow) (apparently WS_EX_LAYERED is the only flag needed to make the window click through, I have no clue if adding WS_EX_TRANSPARENT has any performance benefit or detriment and WS_EX_COMPOSITED probably takes performance down)
+        //TODO(fran): look for another way to make the window click through without having to use the ClickThroughFlags (I feel like WS_EX_LAYERED is gonna destroy our performance somehow)
 
-#if VEILCOMPOSITORTEST 
-        ShowWindow(wnd, SW_SHOW);
-#else
         ShowWindow(wnd, SW_MAXIMIZE); //TODO(fran): Veil code should take care of maximizing
-#endif
         UpdateWindow(wnd);
     }
 
     return wnd;
-}
-
-internal DWORD WINAPI _VeilProcessing(LPVOID param) {
-    veil_start_data* start_data = (veil_start_data*)param;
-    VeilProcessing(start_data);
-    ExitProcess(0);
-    return 0;
 }
 
 int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
@@ -220,87 +195,14 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
     HWND veil = CreateVeilWindow();
     if (!veil) return 0;
 
-    ui_state* veil_ui_wnd = iu::Window((OS::window_creation_flags)(OS::window_creation_flags::topmost | OS::window_creation_flags::resizeborder));
+    ui_state* veil_ui_wnd = iu::Window((OS::window_creation_flags)(OS::topmost | OS::resizeborder));
     if (!veil_ui_wnd->wnd) return 0;
 
     veil_start_data start_data;
     start_data.veil_wnd.hwnd = veil; //TODO(fran): create all windows from OS code
     start_data.veil_ui_base_state = veil_ui_wnd;
 
-#if 1 // Single Thread Version
     VeilProcessing(&start_data);
-#else // Separate Thread Version (because of the resizing problem, refer to VeilUIProc's WM_NCLBUTTONDOWN, for info on it)
-    DWORD ProcessAndRenderThreadID = 0;
-    HANDLE thread_res = CreateThread(nil, 0, _VeilProcessing, &start_data, 0, &ProcessAndRenderThreadID);
-    assert(thread_res);
 
-    b32 do_continue = false; //TODO(fran): better name, maybe 'no_dispatch'
-
-    while (true) //TODO(fran): can a crash on the other thread leave us with an infinite loop here?
-    {
-        MSG msg;
-        GetMessageW(&msg, 0, 0, 0);
-        TranslateMessage(&msg);
-
-        //auto _msgName = msgToString(msg.message); OutputDebugStringA(_msgName); OutputDebugStringA("\n");
-
-        //TODO(fran): we know that sometimes Windows bypasses the msg queue and goes straight to the wndproc, in those cases we would not have to option to PostThreadMessageW from here, that'd need doing it from inside the wndproc. See if there's anything that needs us doing that
-
-        //IMPORTANT(fran): an essential problem when sending msgs to another thread is we cant send the hwnd since PostThreadMessageW doesnt allow it, therefore we'll hack our way to it by storing part of the hwnd's bytes in the message, which is a UINT whose top 2bytes are not used, we also know that hwnd's top 4bytes are basically filler and also never used (only set to all 0 or all 1). In summary we manage to send 2 of the 4 neccesary bytes, good enough to make an educated guess about which hwnd the message should go to.
-            //Also the leftover topmost 4bits of the message are basically also never used, we could use them as well if we wanted to get a better match
-
-        switch (msg.message) //IMPORTANT TODO(fran): handle the close button message that you get when closed from the statusbar or from the Alt+Tab tab view
-        {
-            case WM_LBUTTONDOWN:
-            {
-                SetCapture(veil_ui.hwnd); //NOTE(fran): SetCapture _must_ be called from the same thread that created the hwnd that you want to capture the mouse
-                goto post;
-            } break;
-            case WM_LBUTTONUP:
-            {
-                ReleaseCapture();
-                goto post;
-            } break;
-            case WM_TRAY:
-            case WM_DPICHANGED_CUSTOM: //TODO(fran): pretty sure this only works from Windows 8.1 onwards, find out how to do it in Windows 7 and below
-            {
-                do_continue = true;
-                //NOTE(fran): we stop the msg from going back to the wndproc and generating an infinite loop. Look at WM_TRAY inside VeilUIProc for more info
-                goto post;
-            } break;
-            //case WM_CHAR:
-            //case WM_KEYDOWN:
-            case WM_QUIT:
-            //case WM_SIZE:
-            case WM_MOUSEMOVE:
-            case WM_LBUTTONDBLCLK:
-            case WM_RBUTTONDOWN:
-            case WM_RBUTTONUP:
-            case WM_RBUTTONDBLCLK:
-            case WM_SYSKEYDOWN:
-            case WM_KEYDOWN:
-            case WM_MOUSEWHEEL:
-            //TODO(fran): case WM_MOUSEHWHEEL:
-            //case WM_HOTKEY: //NOTE(fran): it is sent straight to the other thread by Windows
-            {
-                post:
-                auto ret = PostThreadMessageW(ProcessAndRenderThreadID, msg.message, msg.wParam, msg.lParam);
-                if (do_continue) { do_continue = false; continue; }
-            } break;
-            /* TODO(fran): it may be a good idea to send ncmousemove as mousemove too to the ui, to handle cases where the mouse goes from the client area to the nonclient
-            case WM_NCMOUSEMOVE:
-            {
-                PostThreadMessageW(ProcessAndRenderThreadID, WM_MOUSEMOVE, msg.wParam, msg.lParam);
-            } break;
-            */
-            //case WM_NCLBUTTONDOWN: { crash(); } break;
-
-            //IMPORTANT TODO(fran): send WM_NCMOUSEMOVE WM_NCLBUTTONDOWN messages to the ui as normal mouse messages and have the ui code decide when to send this real messages to the wndproc, that way we allow for the ui to decide where the OS features should be active, allowing for, for example, have the close/max/min buttons block the resize border in their region
-        }
-
-        DispatchMessageW(&msg); //TODO(fran): maybe some msgs should not be dispatched to the wndproc, like WM_QUIT?
-    }
-#endif
-    //TODO(fran): for some absolutely bizarre reason while the veil is active the Windows 10 Settings App can _not_ be moved nor resized from the top (title area) unless if clicking very close to the minimize button, wtf!? (also I reopened SmartVeil and its veil does _not_ have this issue, wtffffff!?)
     return 0;
 }
