@@ -82,7 +82,7 @@ enum class ui_event_type {
     Text,
 };
 
-struct ui_event {
+struct ui_event { //TODO(fran): this can be hidden inside iu.h so window_handle doesnt need to be pre-defined by the os
     ui_event_type type;
     OS::window_handle destination;
     union {

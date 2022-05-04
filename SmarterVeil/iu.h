@@ -2074,9 +2074,10 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             ui_sizer_element* superchild = data.childs;
             while (superchild) {
                 ui_element* child = superchild->element;
-                while (child) {
+                if (child) {
+                //while (child) {
                     RenderElement(ui, child);
-                    child = child->child;
+                    //child = child->child;
                 }
                 superchild = superchild->next;
             }
@@ -2094,9 +2095,10 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             auto superchild = data.childs;
             while (superchild) {
                 ui_element* child = superchild->element;
-                while (child) {
+                if (child) {
+                //while (child) {
                     RenderElement(ui, child);
-                    child = child->child;
+                    //child = child->child;
                 }
 
 #ifdef DEBUG_BUILD
@@ -2256,6 +2258,7 @@ internal void TESTRenderMouse(iu::ui_renderer* r, v2 mouseP)
 
 internal void RenderUI(ui_state* ui)
 {
+    TIMEDFUNCTION();
     BeginRender(&ui->renderer, ui->placement.wh);
     
     for(auto& layer : ui->element_layers)
@@ -2727,7 +2730,7 @@ internal v2 GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* el
                 //Resize childs (childs are placed inside the bounds of the element)
                 assert(child->type == ui_type::sizer);
                 ui_element* parent = element;
-                GetElementBottomRight(ui, parent->placement, child, do_resize);
+                GetElementBottomRight(ui, parent->placement, child, do_resize); //TODO(fran): can we avoid the recursion by putting the whole thing inside a while (child){...; child=child->child;}
             }
 
             return xy;
@@ -3360,7 +3363,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
     };
 
     //TODO(fran): real non_editable_text element for the title instead of using a button
-    //TODO(fran): assign system default UI font to the application title. Also idk why but the text in the title looks worse than in areas inside the "client" region
+    //TODO(fran): assign system default UI font to the application title
     //TODO(fran): on Windows when the window is maximized the nc arena needs to be moved down by the height of the top resize border. Currently we solve this by just hacking it and applying a Y offset before calling render
 
     contextmenu_context* contextmenu_ctx = push_type(arena, contextmenu_context);
@@ -3443,7 +3446,8 @@ void PushBasicUIStatsLayer(ui_state* ui)
         .font = {.v_scale_factor = 1.f, .w_extra_chars = 2},
     };
     
-    ui->element_layers += VSizer(arena, sizer_alignment::bottom, //TODO(fran): it's going too much to the bottom, to the point that a couple of elements get clipped, we are probably wrongly taking an offset for the nonclient
+    ui->element_layers += VSizer(arena, sizer_alignment::top, //TODO(fran): if using bottom alignment it goes to the bottom too much, to the point that a couple of elements get clipped, we are probably wrongly taking an offset for the nonclient
+        { .sizing = {.type= element_sizing_type::os_non_client_top}, .element= VPad(arena)},
         { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based sizing*/,.bounds = {.scale_factor = .3f}}, .element = HSizer(arena, sizer_alignment::left,
                 {.sizing = {.type = element_sizing_type::bounds, .bounds = {.scale_factor = .2f}, } , .element = Background(.arena = arena, .theme = &test_bk_theme, /*.on_click = TODO(fran): show/hide(small height)*/
                     .child = VSizer(arena, sizer_alignment::top,
@@ -3456,7 +3460,7 @@ void PushBasicUIStatsLayer(ui_state* ui)
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Layer Count: {}"), &ui->element_layers.cnt)})})},
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Permanent Memory Pool: Total: {} bytes   Used: {} bytes"), &ui->permanent_arena.sz, &ui->permanent_arena.used)})})},
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Language Manager Memory Pool: Total: {} bytes   Used: {} bytes"), &ui->LanguageManager->string_mapping_arena.sz, &ui->LanguageManager->string_mapping_arena.used)})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Temporary String Memory Pool: Total: {} bytes   Used: {} bytes"), &ui->LanguageManager->temp_string_arena.sz, &ui->LanguageManager->temp_string_arena.used)})})} //TODO(fran): wtf is wrong with the display for 'used'???
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Temporary String Memory Pool: Total: {} bytes   Used: {} bytes"), &ui->LanguageManager->temp_string_arena.sz, &ui->LanguageManager->temp_string_arena.used)})})} //TODO(fran): the 'used' that's presented to the user corresponds to the time this element is rendered, if more things are rendered afterwards this value might be meaningless and completely wrong, we'd probably want to render the 'used' count for the previous frame
                     )
                 )}
             )
