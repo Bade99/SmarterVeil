@@ -714,7 +714,6 @@ struct ui_state {
     ui_element* interacting_with;
     ui_element* under_the_mouse;
     ui_element* keyboard_focus;
-    ui_element* _next_hot;
 
     struct {
         ui_action on_triggered;
@@ -995,7 +994,6 @@ namespace iu {
         res->interacting_with = nil;
         res->under_the_mouse = nil;
         res->keyboard_focus = nil;
-        res->_next_hot = nil;
         res->placement = { 0 };
         res->render_and_update_screen = true;
 
@@ -2806,7 +2804,6 @@ internal void UIProcessing(ui_state* ui)
         input_res = InputUpdate(layer, &ui->input);
         if (input_res.next_hot) break;
     }
-    ui->_next_hot = input_res.next_hot;
 
     InputProcessing(ui, input_res.next_hot, &ui->input);
 
@@ -3445,15 +3442,21 @@ void PushBasicUIStatsLayer(ui_state* ui)
         .type = element_sizing_type::font,
         .font = {.v_scale_factor = 1.f, .w_extra_chars = 2},
     };
-
-    ui->element_layers += VSizer(arena, sizer_alignment::bottom,
+    
+    ui->element_layers += VSizer(arena, sizer_alignment::bottom, //TODO(fran): it's going too much to the bottom, to the point that a couple of elements get clipped, we are probably wrongly taking an offset for the nonclient
         { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based sizing*/,.bounds = {.scale_factor = .3f}}, .element = HSizer(arena, sizer_alignment::left,
                 {.sizing = {.type = element_sizing_type::bounds, .bounds = {.scale_factor = .2f}, } , .element = Background(.arena = arena, .theme = &test_bk_theme, /*.on_click = TODO(fran): show/hide(small height)*/
                     .child = VSizer(arena, sizer_alignment::top,
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Input Text: {}"), &ui->input.text)})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Next Hot: {}"), &ui->_next_hot) })})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Under the Mouse: {}"), &ui->under_the_mouse) })})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Interacting With: {}"), &ui->interacting_with) })})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Keyboard Focus: {}"), &ui->keyboard_focus) })})},
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Scaling: {:.2f}"), &ui->scaling)})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Mouse Pos: ({:.1f},{:.1f})"), &ui->input.mouseP.x, &ui->input.mouseP.y /* TODO(fran): format custom types (v2*) */)})})}
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Mouse Pos: ({:.1f},{:.1f})"), &ui->input.mouseP.x, &ui->input.mouseP.y)})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Layer Count: {}"), &ui->element_layers.cnt)})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Permanent Memory Pool: Total: {} bytes   Used: {} bytes"), &ui->permanent_arena.sz, &ui->permanent_arena.used)})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Language Manager Memory Pool: Total: {} bytes   Used: {} bytes"), &ui->LanguageManager->string_mapping_arena.sz, &ui->LanguageManager->string_mapping_arena.used)})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Temporary String Memory Pool: Total: {} bytes   Used: {} bytes"), &ui->LanguageManager->temp_string_arena.sz, &ui->LanguageManager->temp_string_arena.used)})})} //TODO(fran): wtf is wrong with the display for 'used'???
                     )
                 )}
             )
