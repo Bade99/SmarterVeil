@@ -317,7 +317,7 @@ internal void ReleaseWindowsCompositor(windows_compositor* compositor)
 internal void CreateVeilUIElements(veil_ui_state* veil_ui)
 {
     TIMEDFUNCTION();
-    button_theme base_button_theme =
+    local_persistence button_theme base_button_theme =
     {
         .color =
         {
@@ -345,7 +345,7 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         .font = 0,
     };
 
-    slider_theme base_slider_theme =
+    local_persistence slider_theme base_slider_theme =
     {
         .color =
         {
@@ -379,7 +379,7 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         .track_style = ui_style::round_rect,
     };
 
-    hotkey_theme base_hotkey_theme =
+    local_persistence hotkey_theme base_hotkey_theme =
     {
         .color =
         {
@@ -420,7 +420,7 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
         .style = ui_style::round_rect,
         .font = 0,
     };
-    background_theme bk_theme =
+    local_persistence background_theme bk_theme =
     {
         .color =
         {
@@ -552,6 +552,10 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
     );
 
     CreateOSUIElements(veil_ui->_ui, &veil_ui->quit, layout);
+
+#ifdef DEBUG_BUILD
+    PushBasicUIStatsLayer(veil_ui->_ui);
+#endif
 }
 
 void CreateVeilUITray(veil_ui_state* veil_ui)

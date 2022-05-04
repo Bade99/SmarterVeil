@@ -129,6 +129,7 @@ template<typename F> Defer<F> operator+(defer_dummy, F && f) { return makeDefer<
 #define appname ____appname(u8,_appname)
 #define appnameL ____appname(L,_appname)
 
+#include <format>
 #include "basic_types.h"
 #include "basic_memory.h"
 #include "basic_string.h"

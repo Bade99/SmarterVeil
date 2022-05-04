@@ -230,7 +230,7 @@ struct ui_input { //user input
     //TODO(fran): f32 dt; or calculate dt on our own inside uiprocessing
 };
 
-enum class ui_type {
+enum class ui_type : u32 {
     vpad = 0,
     hpad,
     sizer, //NOTE(fran): strictly used for placing and resizing other non-sizer elements, they are not rendered nor collision tested
@@ -367,7 +367,7 @@ struct pad_desc {
 */
 
 
-enum class interaction_state {
+enum class interaction_state : u8 {
     normal = 0, disabled, mouseover, pressed
 };
 
@@ -392,10 +392,56 @@ enum class ui_string_type {
     id = 0, str, dynamic_id, dynamic_str,
     //TODO(fran): BENCHMARK: performance using none vs using an id equal to 0 that always maps to an empty string in hash table element 0
 };
+
 struct i_s8_fmt {
     s8 fmt; //IMPORTANT: must be null terminated (TODO(fran): get rid of null termination requirement)
     virtual s8 generate_string(memory_arena*) = 0;
 };
+
+template<typename... Ts>
+struct s8_fmt : i_s8_fmt {
+    std::tuple<Ts...> args; //IMPORTANT: the arguments must be pointers
+
+    using seq = std::make_index_sequence<sizeof...(Ts)>();
+
+    s8_fmt(s8 format, Ts... arguments) : args{ arguments... } { this->fmt = format; }
+
+    template<size_t... I>
+    u32 print(utf8* buf, u32 buf_cnt, std::index_sequence<I...>)
+    {
+#if 0
+        i32 res = snprintf((char*)buf, buf_cnt, (char*)this->fmt.chars
+            , *std::get<I>(this->args)...);
+        assert(res >= 0); //snprintf returns a negative value if something went wrong
+        return res;
+#else
+        u32 res = std::format_to_n((char*)buf, buf_cnt, (char*)this->fmt.chars, *std::get<I>(this->args)...).size;
+        //TODO(fran): requires null termination for the format string, fix that so it takes the char count too
+         //TODO(fran): OPTIMIZATION: make sure the tuple disappears and the get() calls get straight mapped to the values without any function call
+        //TODO(fran): no utf8 support? maybe char* is enough for formatting //TODO(fran): this->fmt still has to be null terminated, fix that
+        //TODO(fran): this guy probably throws exceptions, get rid of 'em
+        //TODO(fran): the documentation says the returned results's 'size' is "untruncated" (so it lies about the size whether buf is valid or not?)
+        return res;
+#endif
+    }
+
+    s8 generate_string(memory_arena* arena) override //TODO(fran): can we get rid of the virtual call?
+    {
+        u32 cnt = print(nil, 0, std::make_index_sequence<sizeof...(Ts)>()); //TODO(fran): BENCHMARK vs std::string append as we go along
+        utf8* buf = push_arr(arena, utf8, cnt);
+        return { .chars = buf, .cnt = print(buf, cnt, std::make_index_sequence<sizeof...(Ts)>()), .cnt_allocd = cnt };
+    }
+
+    void* operator new(size_t sz, memory_arena* arena)
+    {
+        void* res = push_sz(arena, (u32)sz);
+        return res;
+    }
+    void operator delete(void*, memory_arena*) {} //TODO(fran): can we get rid of this?
+};
+
+#define S8Fmt(arena, s, ...) new (arena) s8_fmt(s, __VA_ARGS__) /*TODO(fran): instead of an s8 also allow for a string id*/
+
 struct ui_string {
     ui_string_type type;
     union {
@@ -444,7 +490,7 @@ struct ui_image {
 
 typedef button_theme contextmenu_button_theme;
 
-enum class ui_cursor_type { os = 0, image };
+enum class ui_cursor_type : u8 { os = 0, image };
 
 struct ui_cursor {
     ui_cursor_type type;
@@ -468,7 +514,7 @@ struct ui_element {
 #endif
         } sizer;
         struct {
-            //NOTE(fran): this table contains only on element per row
+            //NOTE(fran): this table contains only one element per row
             fixed_array<f32, subelement_max_cnt> w_max_sizes;//TODO(fran): this could go in the one_frame arena
             u32 columns;
             ui_subelement_table_element* childs;
@@ -478,14 +524,14 @@ struct ui_element {
 #endif
         } subelement_table;
         struct {
-            background_theme theme;
+            background_theme* theme;
 
             ui_action OnClick;
             ui_action OnDoubleClick;
             ui_action OnUnRClick;
         } background;
         struct {
-            button_theme theme;
+            button_theme* theme;
 
             ui_action OnUnclick;
             ui_action OnClick;
@@ -496,7 +542,7 @@ struct ui_element {
             ui_image image;
         } button;
         struct {
-            contextmenu_button_theme theme;
+            contextmenu_button_theme* theme;
             ui_action OnMousehover;//NOTE(fran): mousehover indicates a prolonged period of continuous mouseover //TODO(fran): implement
             ui_action OnUnclick;
 
@@ -505,7 +551,7 @@ struct ui_element {
             iu::ui_hotkey_data hotkey;
         } contextmenu_button;
         struct {
-            slider_theme theme;
+            slider_theme* theme;
             slider_value value;
 
             v2 thumb_pivot;
@@ -530,7 +576,7 @@ struct ui_element {
                 f32 fill_percentage = percentage_between(this->value.min, *this->value.v, this->value.max);
 
                 if (this->is_horizontal(placement)) {
-                    fill_track.h = placement.h * this->theme.dimension.track_thickness;
+                    fill_track.h = placement.h * this->theme->dimension.track_thickness;
                     fill_track.w = placement.w * fill_percentage;
                     fill_track.y = placement.y + (placement.h - fill_track.h) * .5f;
                     fill_track.x = placement.x;
@@ -540,13 +586,13 @@ struct ui_element {
                     empty_track.y = fill_track.y;
                     empty_track.x = fill_track.right();
 
-                    f32 thumb_diameter = placement.h * this->theme.dimension.thumb_thickness;
+                    f32 thumb_diameter = placement.h * this->theme->dimension.thumb_thickness;
                     thumb = rc_center_diameter({ fill_track.right(), fill_track.centerY() }, { thumb_diameter, thumb_diameter });
                 }
                 else {
                     //NOTE(fran): vertical sliders for the most part grow from bottom to top, so that's what we'll do: empty_track at the top, fill_track at the bottom
                     empty_track.y = placement.y;
-                    empty_track.w = placement.w * this->theme.dimension.track_thickness;
+                    empty_track.w = placement.w * this->theme->dimension.track_thickness;
                     empty_track.h = placement.h * (1.f - fill_percentage);
                     empty_track.x = placement.x + (placement.w - empty_track.w) * .5f;
 
@@ -555,7 +601,7 @@ struct ui_element {
                     fill_track.y = empty_track.bottom();
                     fill_track.x = empty_track.x;
 
-                    f32 thumb_diameter = placement.w * this->theme.dimension.thumb_thickness;
+                    f32 thumb_diameter = placement.w * this->theme->dimension.thumb_thickness;
                     thumb = rc_center_diameter({ empty_track.centerX() ,empty_track.bottom() }, { thumb_diameter, thumb_diameter });
                 }
                 full_track = add_rc(fill_track, empty_track);
@@ -574,7 +620,7 @@ struct ui_element {
             }
         } slider;
         struct {
-            hotkey_theme theme;
+            hotkey_theme* theme;
             ui_string placeholder_text;
             hotkey_string_state string_state;
             ui_hotkey current_hotkey;
@@ -586,6 +632,61 @@ struct ui_element {
 
     ui_element* child;//TODO(fran): maybe change to childs, elements that will be placed inside the parent
 };
+
+internal s8 GetElementTypeName(ui_element* e)
+{
+    s8 s;
+    if (e)
+        switch (e->type)
+        {
+        case ui_type::sizer: s = const_temp_s(u8"Sizer"); break;
+        case ui_type::vpad: s = const_temp_s(u8"Vpad"); break;
+        case ui_type::hpad: s = const_temp_s(u8"Hpad"); break;
+        case ui_type::background: s = const_temp_s(u8"Background"); break;
+        case ui_type::button: s = const_temp_s(u8"Button"); break;
+        case ui_type::slider: s = const_temp_s(u8"Slider"); break;
+        case ui_type::hotkey: s = const_temp_s(u8"Hotkey"); break;
+        case ui_type::contextmenu_button: s = const_temp_s(u8"Context Menu Button"); break;
+        default: s = const_temp_s(u8""); crash(); break;
+        }
+    else  s = const_temp_s(u8"*None*");
+    return s;
+}
+
+template<typename CharT>
+struct std::formatter<s8, CharT>
+{
+    template <typename FormatParseContext>
+    auto parse(FormatParseContext& pc)
+    {
+        // parse formatter args like padding, precision if you support it
+        return pc.end(); // returns the iterator to the last parsed character in the format string, in this case we just swallow everything
+    }
+
+    template<typename FormatContext>
+    auto format(s8 s, FormatContext& fc)
+    {
+        return std::format_to_n(fc.out(), s.cnt, (char*)s.chars).out;
+    }
+};
+
+template<typename CharT>
+struct std::formatter<ui_element*, CharT>
+{
+    template <typename FormatParseContext>
+    auto parse(FormatParseContext& pc)
+    {
+        // parse formatter args like padding, precision if you support it
+        return pc.end(); // returns the iterator to the last parsed character in the format string, in this case we just swallow everything
+    }
+
+    template<typename FormatContext>
+    auto format(ui_element* e, FormatContext& fc)
+    {
+        return std::format_to(fc.out(), "{}", GetElementTypeName(e));
+    }
+};
+
 
 struct ui_tray_state {
     OS::tray_icon tray;
@@ -613,6 +714,7 @@ struct ui_state {
     ui_element* interacting_with;
     ui_element* under_the_mouse;
     ui_element* keyboard_focus;
+    ui_element* _next_hot;
 
     struct {
         ui_action on_triggered;
@@ -871,20 +973,6 @@ namespace iu {
                     }
         }
 
-#ifdef DEBUG_BUILD //Print input text received from the OS
-        auto w = OS::GetForegroundWindow();
-        for (auto& a : actives)
-            for (auto& ui : a)
-                if (ui->wnd == w) 
-                {
-                    ui->input.text += (utf8)0; defer{ ui->input.text.cnt--; }; //append null terminator for the Windows functions to not implode
-                    auto out = _OS::convert_to_s16(ui->input.text); defer{ _OS::free_small_mem(out.chars); };
-                    OutputDebugStringW((LPCWSTR)out.chars); OutputDebugStringW(L"\n");
-                    goto skip;
-                }
-        skip:
-#endif
-
         //TODO(fran): one frame initialization for global ui things
         //Temporary Arena initialization
         auto lang_mgr = state->windows.active.arr[0]->LanguageManager; //TODO(fran): lang mgr should be global and not obtained through a window in this hacky way
@@ -907,6 +995,7 @@ namespace iu {
         res->interacting_with = nil;
         res->under_the_mouse = nil;
         res->keyboard_focus = nil;
+        res->_next_hot = nil;
         res->placement = { 0 };
         res->render_and_update_screen = true;
 
@@ -1213,8 +1302,7 @@ internal ui_element* Button(const button_creation_args& args)
     elem->placement = { 0 };
     elem->cursor = args.cursor;
     elem->child = args.child;
-    elem->data.button.theme = *args.theme; //TODO(fran): this could be changed to be a straight pointer, and allow for quick and easy realtime update of all elements sharing the same theme
-
+    elem->data.button.theme = args.theme;
     elem->data.button.text = args.text;
     elem->data.button.image = args.image;
     elem->data.button.OnClick = args.on_click;
@@ -1245,7 +1333,7 @@ internal ui_element* ContextMenuButton(const contextmenu_button_creation_args& a
     elem->placement = { 0 };
     elem->child = args.child;
 
-    elem->data.contextmenu_button.theme = *args.theme;
+    elem->data.contextmenu_button.theme = args.theme;
     elem->data.contextmenu_button.text = args.text;
     elem->data.contextmenu_button.image = args.image;
     elem->data.contextmenu_button.hotkey = args.hotkey;
@@ -1270,7 +1358,7 @@ internal ui_element* Background(const background_creation_args& args)
     elem->type = ui_type::background;
     elem->placement = { 0 };
     elem->child = args.child;
-    elem->data.background.theme = *args.theme;
+    elem->data.background.theme = args.theme;
     elem->data.background.OnClick = args.on_click;
     elem->data.background.OnDoubleClick = args.on_doubleclick;
     elem->data.background.OnUnRClick = args.on_unrclick;
@@ -1291,7 +1379,7 @@ internal ui_element* Slider(const slider_creation_args& args)
     elem->type = ui_type::slider;
     elem->placement = { 0 };
     elem->child = args.child;
-    elem->data.slider.theme = *args.theme;
+    elem->data.slider.theme = args.theme;
     elem->data.slider.value = args.value;
 
     return elem;
@@ -1338,9 +1426,8 @@ internal ui_element* Hotkey(const hotkey_creation_args& args)
     elem->placement = { 0 };
     elem->cursor = args.cursor;
     elem->child = args.child;
-    elem->data.hotkey.theme = *args.theme;
+    elem->data.hotkey.theme = args.theme;
     elem->data.hotkey.on_hotkey = args.on_hotkey;
-    //elem->data.hotkey.context = args.context;
     elem->data.hotkey.placeholder_text = args.placeholder_text;
     elem->data.hotkey.string_state = hotkey_string_state::placeholder;
 
@@ -1931,9 +2018,9 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         {
             auto data = element->data.button;
 
-            auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme.color, element->interaction_st);
-            assert(data.theme.dimension.border_thickness == 0);
-            RenderBackground(r, element, bk, data.theme.style);
+            auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
+            assert(data.theme->dimension.border_thickness == 0);
+            RenderBackground(r, element, bk, data.theme->style);
 
             s8 text = GetUIStringStr(ui, data.text);
                 
@@ -1950,11 +2037,11 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         {
             auto& data = element->data.slider;
 
-            auto [track_empty_color, track_fill_color, thumb_color] = GetColorsForInteractionState(&data.theme.color, element->interaction_st);
+            auto [track_empty_color, track_fill_color, thumb_color] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
             //TODO(fran): better coloring based not only on interaction state but collision testing too, check whether the mouse is in the empty/fill/thumb region and only change the color for that one, leave the others on normal
 
-            assert(data.theme.thumb_style == ui_style::circle);
-            assert(data.theme.track_style == ui_style::round_rect);
+            assert(data.theme->thumb_style == ui_style::circle);
+            assert(data.theme->track_style == ui_style::round_rect);
 
             data.calculate_colliders(element->placement);
 
@@ -2066,9 +2153,9 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         {
             auto data = element->data.hotkey;
 
-            auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme.color, element->interaction_st, data.string_state);
+            auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st, data.string_state);
 
-            assert(data.theme.style == ui_style::round_rect);
+            assert(data.theme->style == ui_style::round_rect);
 
             //TODO(fran): better radius calculation, depending on the dimensions we end up with almost circles
             f32 Xradius = minimum(element->placement.w, element->placement.h) * .5f;
@@ -2098,24 +2185,24 @@ internal void RenderElement(ui_state* ui, ui_element* element)
 
             RenderText(r, font, text.chars, text.cnt, fg, element->placement, horz_text_align::center, vert_text_align::center, true);
 
-            assert(data.theme.dimension.border_thickness == 0);
+            assert(data.theme->dimension.border_thickness == 0);
 
         } break;
         case ui_type::background:
         {
             auto data = element->data.background;
 
-            auto [bk, bd] = GetColorsForInteractionState(&data.theme.color, element->interaction_st);
-            assert(data.theme.dimension.border_thickness == 0);
-            RenderBackground(r, element, bk, data.theme.style);
+            auto [bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
+            assert(data.theme->dimension.border_thickness == 0);
+            RenderBackground(r, element, bk, data.theme->style);
         } break;
         case ui_type::contextmenu_button:
         {
             auto data = element->data.contextmenu_button;
 
-            auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme.color, element->interaction_st);
-            assert(data.theme.dimension.border_thickness == 0);
-            RenderBackground(r, element, bk, data.theme.style);
+            auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
+            assert(data.theme->dimension.border_thickness == 0);
+            RenderBackground(r, element, bk, data.theme->style);
 
             //TODO(fran): either store or retrieve the placement for all subelements, instead of this HACK
             sz2 avgchar = MeasureAverageTextCharacter(font);
@@ -2667,26 +2754,6 @@ internal v2 ResizeElement(ui_state* ui, rc2 bounds, ui_element* element)
     return res;
 }
 
-internal void PrintNextHot(input_results* input_res)
-{
-    const char* s;
-    if (input_res->next_hot)
-        switch (input_res->next_hot->type)
-        {
-            case ui_type::sizer: s = "Sizer\n"; break; //TODO(fran): LOGGER
-            case ui_type::vpad: s = "Vpad\n"; break;
-            case ui_type::hpad: s = "Hpad\n"; break;
-            case ui_type::background: s = "Background\n"; break;
-            case ui_type::button: s = "Button\n"; break;
-            case ui_type::slider: s = "Slider\n"; break;
-            case ui_type::hotkey: s = "Hotkey\n"; break;
-            case ui_type::contextmenu_button: s = "Context Menu Button\n"; break;
-            default: s = ""; crash(); break;
-        }
-    else  s = "*None*\n";
-    OutputDebugStringA(s);
-}
-
 internal void UIProcessing(ui_state* ui)
 {
     ui->render_and_update_screen = false;
@@ -2724,8 +2791,6 @@ internal void UIProcessing(ui_state* ui)
         
         //assert(ui->scaling == GetNewScaling(ui)); //TODO(fran): use GetNewScaling(ui), this assertion fails cause it actually updates faster than ui->scaling
 
-        utf8 scalingstr[20]; snprintf((char*)scalingstr, ArrayCount(scalingstr), "scaling:(%.2f)\n", iu::GetNewScaling(ui)); OutputDebugStringA((char*)scalingstr);
-
         if (ui->scaling != ui->_last_scaling)
         {
             EnableRendering(ui);
@@ -2734,8 +2799,6 @@ internal void UIProcessing(ui_state* ui)
         ui->_last_scaling = ui->scaling;
     }
 
-    utf8 mousepstr[32]; snprintf((char*)mousepstr, ArrayCount(mousepstr), "mouseP:(%.1f,%.1f)\n", ui->input.mouseP.x, ui->input.mouseP.y); OutputDebugStringA((char*)mousepstr);
-
     input_results input_res;
 
     for (auto& layer : reverse(ui->element_layers))
@@ -2743,8 +2806,7 @@ internal void UIProcessing(ui_state* ui)
         input_res = InputUpdate(layer, &ui->input);
         if (input_res.next_hot) break;
     }
-
-    PrintNextHot(&input_res);
+    ui->_next_hot = input_res.next_hot;
 
     InputProcessing(ui, input_res.next_hot, &ui->input);
 
@@ -2790,38 +2852,6 @@ internal void UIProcessing(ui_state* ui)
     //SMALL TODO(fran): tiny BUG: right click the titlebar to open the context menu, move the mouse slightly towards the menu, for one frame the mouse icon will change to the arrow with loading circle style before changing back to the arrow
 }
 
-template<typename... Ts>
-struct s8_fmt : i_s8_fmt {
-    std::tuple<Ts...> args; //IMPORTANT: the arguments must be pointers
-
-    s8_fmt(s8 format, Ts... arguments) : args{ arguments... } { this->fmt = format; }
-
-    template<size_t... I>
-    u32 print(utf8* buf, u32 buf_cnt, std::index_sequence<I...>)
-    {
-        i32 res = snprintf((char*)buf, buf_cnt, (char*)this->fmt.chars /*TODO(fran): requires null termination, make our own that receives the fmt char cnt*/
-            , (..., *std::get<I>(this->args))); //TODO(fran): change to using fmt (the library) or creating our own that works with localization (arguments out of order) //TODO(fran): OPTIMIZATION: make sure the tuple disappears and the get() calls get straight mapped to the values without any function call
-        assert(res >= 0); //snprintf returns a negative value if something went wrong
-        return res;
-    }
-
-    s8 generate_string(memory_arena* arena) override //TODO(fran): can we get rid of the virtual call?
-    {
-        u32 cnt = print(nil, 0, std::make_index_sequence<sizeof...(Ts)>()); //TODO(fran): BENCHMARK vs std::string append as we go along
-        utf8* buf = push_arr(arena, utf8, cnt);
-        return { .chars = buf, .cnt = print(buf, cnt, std::make_index_sequence<sizeof...(Ts)>()), .cnt_allocd = cnt };
-    }
-
-    void* operator new(size_t sz, memory_arena* arena)
-    {
-        void* res = push_sz(arena, (u32)sz);
-        return res;
-    }
-    void operator delete(void*, memory_arena*) {} //TODO(fran): can we get rid of this?
-};
-
-#define S8Fmt(arena, s, ...) new (arena) s8_fmt(s, __VA_ARGS__) /*TODO(fran): instead of an s8 also allow for a string id*/
-
 internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_area)
 //TODO(fran): ui_action on_close instead of b32* ?
 {
@@ -2832,7 +2862,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
 
     //TODO(fran): change to the inactive state
 
-    background_theme nonclient_bk_theme =
+    local_persistence background_theme nonclient_bk_theme = //TODO(fran): global theme table
     {
         .color =
         {
@@ -2852,7 +2882,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         .style = ui_style::rect,
     };
 
-    button_theme base_iconbutton_theme =
+    local_persistence button_theme base_iconbutton_theme =
     {
         .color =
         {
@@ -2872,7 +2902,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         .font = 0,
     };
 
-    button_theme minmax_theme =
+    local_persistence button_theme minmax_theme =
     {
         .color =
         {
@@ -2899,7 +2929,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         .font = 0,
     };
 
-    button_theme close_theme =
+    local_persistence button_theme close_theme =
     {
         .color =
         {
@@ -2920,7 +2950,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         .font = 0,
     };
 
-    button_theme base_noneditabletext_theme = base_iconbutton_theme;
+    local_persistence button_theme base_noneditabletext_theme = base_iconbutton_theme;
 
     element_sizing_desc full_bounds_sizing =
     {
@@ -3104,7 +3134,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
             ui->context_menu = iu::WindowContextmenu();
         }
 
-        contextmenu_button_theme contextbutton_theme =
+        local_persistence contextmenu_button_theme contextbutton_theme =
         {
             .color =
             {
@@ -3361,8 +3391,18 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         { .sizing = remaining_sizing, .element = client_area } //TODO(fran): better if the user received where to place their ui
     );
 
-#ifdef DEBUG_BUILD
-    background_theme test_bk_theme =
+    ui->OnClose = { .context = close, .action = common_ui_actions::B32_Set };
+
+#else
+#error Define your OS's implementation
+#endif
+}
+
+void PushBasicUIStatsLayer(ui_state* ui)
+{
+    memory_arena* arena = &ui->permanent_arena;
+
+    local_persistence background_theme test_bk_theme =
     {
         .color =
         {
@@ -3380,28 +3420,42 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
         .style = ui_style::rect,
     };
 
-    //TODO(fran): show:
-    //ui->input.text;
-    //ui->next_hot;
-    
-    
-    ui->element_layers += VSizer(arena, sizer_alignment::top,
-        { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based*/,.bounds = {.scale_factor = .3f}}, .element = HSizer(arena, sizer_alignment::left,
+    local_persistence button_theme base_noneditabletext_theme =
+    {
+        .color =
+        {
+            .foreground =
+            {
+                .normal = {1.0f,1.0f,1.0f,1.0f},
+                .mouseover = base_noneditabletext_theme.color.foreground.normal,
+                .pressed = base_noneditabletext_theme.color.foreground.normal,
+                .inactive = {0.35f,0.35f,0.4f,1.0f},
+            },
+        },
+        .dimension =
+        {
+            .border_thickness = 0,
+        },
+        .style = ui_style::round_rect,
+        .font = 0,
+    };
+
+    element_sizing_desc noneditabletext_sizing =
+    {
+        .type = element_sizing_type::font,
+        .font = {.v_scale_factor = 1.f, .w_extra_chars = 2},
+    };
+
+    ui->element_layers += VSizer(arena, sizer_alignment::bottom,
+        { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based sizing*/,.bounds = {.scale_factor = .3f}}, .element = HSizer(arena, sizer_alignment::left,
                 {.sizing = {.type = element_sizing_type::bounds, .bounds = {.scale_factor = .2f}, } , .element = Background(.arena = arena, .theme = &test_bk_theme, /*.on_click = TODO(fran): show/hide(small height)*/
-                    .child = VSizer(arena, sizer_alignment::top, 
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Input Text: ")})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Next Hot: ")})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Scaling: %.2f"), &ui->scaling)})})},
-                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Mouse Pos: (%.1f,%.1f)"), &ui->input.mouseP.x, &ui->input.mouseP.y /* TODO(fran): format custom types (v2*) */)})})}
+                    .child = VSizer(arena, sizer_alignment::top,
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Input Text: {}"), &ui->input.text)})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Next Hot: {}"), &ui->_next_hot) })})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Scaling: {:.2f}"), &ui->scaling)})})},
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Mouse Pos: ({:.1f},{:.1f})"), &ui->input.mouseP.x, &ui->input.mouseP.y /* TODO(fran): format custom types (v2*) */)})})}
                     )
                 )}
             )
         });
-#endif
-
-    ui->OnClose = { .context = close, .action = common_ui_actions::B32_Set };
-
-#else
-#error Define your OS's implementation
-#endif
 }
