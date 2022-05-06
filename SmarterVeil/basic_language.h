@@ -258,7 +258,7 @@ struct language_manager {
         {
             if (mapping->key == key)
             {
-                OutputDebugStringA("[ERROR] Duplicated language entry key");
+                OutputDebugStringA("[ERROR] Duplicated language entry key"); //TODO(fran): OS::MessageBox
                 found = mapping;
                 break;
             }

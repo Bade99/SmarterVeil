@@ -3,6 +3,7 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wmissing-braces"
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#define __cpp_lib_format  /*NOTE(fran): needed for std::format*/
 #elif defined(_MSC_VER)
 #define _CRT_NONSTDC_NO_DEPRECATE /*strnicmp*/
 #pragma warning (disable: 4244) /*down & up conversion: possible loss of data*/
@@ -62,6 +63,7 @@
 #define TIMERSTART(name) auto name = StartCounter()
 #define TIMEREND(name) EndCounter(name)
 
+#if 0
 global_persistence int _TIMED_tabcnt = 0;
 #define TIMED_printtabs() for(int __i=0; __i < _TIMED_tabcnt; __i++) OutputDebugStringA("\t")
 
@@ -89,6 +91,19 @@ global_persistence int _TIMED_tabcnt = 0;
         OutputDebugStringA(__printelapsed); \
         if (_TIMED_tabcnt == 0) OutputDebugStringA("----------------------\n"); \
     }
+#else
+#define TIMEDBLOCK(blockname) \
+    auto __timer = StartCounter(); \
+    defer{ \
+        TIMETABLETEST->AddOrModify(timed_element{ .name = const_temp_s((utf8*)#blockname), .t = (f32)EndCounter(__timer), .cnt=1}); \
+    }
+#define TIMEDFUNCTION() \
+    auto __timer = StartCounter(); \
+    auto __funcname = __func__; \
+    defer{ \
+        TIMETABLETEST->AddOrModify(timed_element{ .name = const_temp_s((utf8*)__funcname), .t = (f32)EndCounter(__timer), .cnt=1}); \
+    }
+#endif
 
 template <typename T> struct remove_const { using type = T; };
 template <typename T> struct remove_const<const T> { using type = T; };
@@ -132,11 +147,12 @@ template<typename F> Defer<F> operator+(defer_dummy, F && f) { return makeDefer<
 #include <format>
 #include "basic_types.h"
 #include "basic_memory.h"
+#include "basic_array.h"
 #include "basic_string.h"
 #include "basic_math.h"
 #include "OS.h"
 #include "basic_timing.h"
-#include "lang.h"
+#include "basic_language.h"
 #include "veil.h"
 
 LRESULT CALLBACK VeilProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) //TODO(fran): it's pointless to have this, anything that's here should be moved to the ui code

@@ -33,113 +33,6 @@ struct reverse { //Reference: https://www.fluentcpp.com/2020/02/11/reverse-for-l
 };
 
 template<typename T>
-struct fixed_array_header {
-    u64 cnt;
-    T* arr;
-
-    T* begin()
-    {
-        return this->cnt ? &arr[0] : nullptr;
-    }
-
-    T* end()
-    {
-        return this->cnt ? &arr[0] + this->cnt : nullptr;
-    }
-
-    const T* begin() const
-    {
-        return this->cnt ? &arr[0] : nullptr;
-    }
-
-    const T* end() const
-    {
-        return this->cnt ? &arr[0] + this->cnt : nullptr;
-    }
-
-};
-struct ui_element;
-template<typename T, u64 _cnt>
-struct fixed_array { //TODO(fran): move to basic_array.h
-    u64 cnt; //cnt in use / cnt_used
-    T arr[_cnt];
-
-    constexpr u64 cnt_allocd()
-    {
-        u64 res = ArrayCount(this->arr);
-        return res;
-    }
-
-    T& operator[] (u64 idx)
-    {
-        return this->arr[idx];
-    }
-
-    const T& operator[] (u64 idx) const
-    {
-        return this->arr[idx];
-    }
-
-    void clear() { this->cnt = 0; zero_struct(this->arr); }
-
-#if 1
-    fixed_array<T, _cnt>& operator+=(T e)//TODO(fran): see if this is a good idea
-    {
-        if (this->cnt + 1 > this->cnt_allocd()) crash();
-        this->arr[this->cnt++] = e;
-        return *this;
-    }
-
-    fixed_array<T, _cnt>& add(T e)
-    {
-        return *this += e;
-    }
-#endif
-
-    fixed_array<T, _cnt>& remove_idx(u64 idx)
-    {
-        assert(idx < this->cnt);
-
-        if (this->cnt) this->cnt -= 1;
-
-        this[idx] = this[this->cnt];
-
-        return this; //TODO(fran): we may want to return an iterator to the next element? aka this[idx]
-    }
-
-    fixed_array<T, _cnt>(std::initializer_list<T> elems)
-    {
-        this->cnt = 0;
-        assert(elems.size() <= this->cnt_allocd());
-        for (auto& e : elems) this->arr[this->cnt++] = e;
-    }
-
-#if 0
-    T* begin() { return this->cnt ? &arr[0] : nullptr; }
-    T* end() { return this->cnt ? &arr[0] + this->cnt : nullptr; }
-    const T* begin() const { return this->cnt ? &arr[0] : nullptr; }
-    const T* end() const { return this->cnt ? &arr[0] + this->cnt : nullptr; }
-
-    T* rbegin() { auto end = this->end(); return end ? --end : nullptr; }
-    T* rend() { auto begin = this->begin(); return begin ? --begin : nullptr; }
-    const T* rbegin() const { auto end = this->end(); return end ? --end : nullptr; }
-    const T* rend() const { auto begin = this->begin(); return begin ? --begin : nullptr; }
-#else
-    T* begin() { return &arr[0]; }
-    const T* begin() const { return &arr[0]; }
-    T* end() { return &arr[0] + this->cnt; }
-    const T* end() const { return &arr[0] + this->cnt; }
-
-    std::reverse_iterator<T*> rbegin() { return std::reverse_iterator(this->end()); }
-    std::reverse_iterator<T*> rend() { return std::reverse_iterator(this->begin()); }
-    std::reverse_iterator<const T*> rbegin() const { return std::reverse_iterator(this->end()); } //TODO(fran): not sure this is how you make const iterators
-    std::reverse_iterator<const T*> rend() const { return std::reverse_iterator(this->begin()); }
-#endif
-
-    operator fixed_array_header<T>() { return {this->cnt, this->arr}; }
-};
-
-template<typename T>
 struct fifo_queue {
     u64 cnt;
     u64 cnt_allocd;
@@ -227,7 +120,7 @@ struct ui_input { //user input
     utf8 _text[128]; //TODO(fran): this may be too small for input from the IME
     s8 text; //TODO(fran): how to automatically store the byte array (_text) inside the s8?
 
-    //TODO(fran): f32 dt; or calculate dt on our own inside uiprocessing
+    f32 dt;
 };
 
 enum class ui_type : u32 {
@@ -240,6 +133,7 @@ enum class ui_type : u32 {
     hotkey,
     background,
     contextmenu_button,
+    timetable,//TODO(fran): implement support for custom elements, but somehow try to make it so the code gets put in place, aka that we dont generate a 'call' instruction. We may need to convert the ui_element into a ui_element_header and then provide specializations for each time, otherwise idk how to put them inside the union that we have currently with all the elems' variables
 };
 
 union ui_color {
@@ -504,6 +398,7 @@ struct ui_element {
     rc2 placement;
     interaction_state interaction_st;
     ui_cursor cursor;
+    f32 mousehovertime /*ms*/; //After the mousehover time elapses the element's OnMousehover action is triggered
     union {
         struct {
             sizer_props properties;
@@ -532,7 +427,7 @@ struct ui_element {
         } background;
         struct {
             button_theme* theme;
-
+            
             ui_action OnUnclick;
             ui_action OnClick;
             ui_action OnDoubleClick;
@@ -549,6 +444,7 @@ struct ui_element {
             ui_image image;
             ui_string text;
             iu::ui_hotkey_data hotkey;
+            ui_image right_image;
         } contextmenu_button;
         struct {
             slider_theme* theme;
@@ -626,9 +522,14 @@ struct ui_element {
             ui_hotkey current_hotkey;
             ui_action on_hotkey;
         } hotkey;
+        struct {
+            button_theme* theme;
+            time_table** timetable;
+        } timetable;
     } data;
 
     //TODO(fran): add general ui_actions for all elements
+    ui_action OnMousehover;
 
     ui_element* child;//TODO(fran): maybe change to childs, elements that will be placed inside the parent
 };
@@ -647,6 +548,7 @@ internal s8 GetElementTypeName(ui_element* e)
         case ui_type::slider: s = const_temp_s(u8"Slider"); break;
         case ui_type::hotkey: s = const_temp_s(u8"Hotkey"); break;
         case ui_type::contextmenu_button: s = const_temp_s(u8"Context Menu Button"); break;
+        case ui_type::timetable: s = const_temp_s(u8"Timetable"); break;
         default: s = const_temp_s(u8""); crash(); break;
         }
     else  s = const_temp_s(u8"*None*");
@@ -715,6 +617,8 @@ struct ui_state {
     ui_element* under_the_mouse;
     ui_element* keyboard_focus;
 
+    f32 mousehovertime; //When it reaches 0 it will trigger the mousehovered element's OnMousehover action
+
     struct {
         ui_action on_triggered;
         ui_element* element;
@@ -728,7 +632,6 @@ struct ui_state {
 
     ui_state* context_menu; //TODO(fran): I dont see the need to store a pointer to another window, all state is handled outside of it, so I dont see reason to need it, change this to a dynamic array that handles & dispatches all windows (all ui_states)
     //NOTE(fran): each time we use a context menu we need to create a whole new state object, in order to save time we will not later destroy those objects but instead leave them for reuse
-    //NOTE(fran): a benefit of context menus is they never get resized by the user, meaning we can actually create those windows directly from this thread
 };
 
 
@@ -858,7 +761,7 @@ namespace iu {
         GetState()->events.push({ .type = ui_event_type::SystemGlobalHotkey, .destination = wnd, .systemwidehotkey = {.id = hotkey_id} });
     }
 
-    internal void PreAdjustInput(ui_input* ui_input)
+    internal void PreAdjustInput(ui_input* ui_input, f32 dt)
     {
         ui_input->close = false;
         ui_input->hot_key = { };
@@ -867,6 +770,7 @@ namespace iu {
         ui_input->mouseHScroll = 0;
         ui_input->tray.on_unclick = false;
         ui_input->tray.on_unrclick = false;
+        ui_input->dt = dt;
         
         ui_input->text = { .chars = ui_input->_text, .cnt = 0, .cnt_allocd = ArrayCount(ui_input->_text) };
 
@@ -937,7 +841,7 @@ namespace iu {
         }
     }
 
-    internal void UpdateAndRender()
+    internal void UpdateAndRender(f32 dt) //TODO(fran): not yet sure whether we want to receive the dt or calculate it ourselves
     {
         TIMEDFUNCTION();
         //TODO(fran): move windows to inactive state or let the ui itself do it?
@@ -956,7 +860,7 @@ namespace iu {
 
         for (auto& a : all)
             for (auto& ui : a)
-                PreAdjustInput(&ui->input);
+                PreAdjustInput(&ui->input, dt);
 
         ui_event event;
         next_event:
@@ -996,6 +900,7 @@ namespace iu {
         res->keyboard_focus = nil;
         res->placement = { 0 };
         res->render_and_update_screen = true;
+        res->mousehovertime = 0; //NOTE(fran): it really doesnt matter what it's set to
 
         local_persistence i32 alloc_cnt = 0;
 
@@ -1291,6 +1196,7 @@ struct button_creation_args {
     ui_action on_unclick;
     ui_action on_doubleclick;
     ui_action on_unrclick;
+    ui_action on_mousehover; //TODO(fran): onmouseleave or onmousehoverleave
     ui_element* child;
 };
 internal ui_element* Button(const button_creation_args& args)
@@ -1300,13 +1206,14 @@ internal ui_element* Button(const button_creation_args& args)
     elem->placement = { 0 };
     elem->cursor = args.cursor;
     elem->child = args.child;
-    elem->data.button.theme = args.theme;
-    elem->data.button.text = args.text;
-    elem->data.button.image = args.image;
-    elem->data.button.OnClick = args.on_click;
-    elem->data.button.OnUnclick = args.on_unclick;
-    elem->data.button.OnDoubleClick = args.on_doubleclick;
-    elem->data.button.OnUnRClick = args.on_unrclick;
+    auto& data = elem->data.button;
+    data.theme = args.theme;
+    data.text = args.text;
+    data.image = args.image;
+    data.OnClick = args.on_click;
+    data.OnUnclick = args.on_unclick;
+    data.OnDoubleClick = args.on_doubleclick;
+    data.OnUnRClick = args.on_unrclick;
 
     return elem;
 }
@@ -1319,9 +1226,10 @@ struct contextmenu_button_creation_args {
     ui_image image;
     ui_string text;
     iu::ui_hotkey_data hotkey; //TODO(fran): should be a pointer
+    ui_image right_image; //Usually displays an arrow showing it contains a submenu
     ui_action on_unclick;
+    f32 mousehovertime; //TODO(fran): maybe this isnt the best place in the struct for it
     ui_action on_mousehover;
-    void* context;
     ui_element* child;
 };
 internal ui_element* ContextMenuButton(const contextmenu_button_creation_args& args)
@@ -1329,14 +1237,16 @@ internal ui_element* ContextMenuButton(const contextmenu_button_creation_args& a
     ui_element* elem = push_type(args.arena, ui_element);
     elem->type = ui_type::contextmenu_button;
     elem->placement = { 0 };
+    elem->mousehovertime = args.mousehovertime;
     elem->child = args.child;
-
-    elem->data.contextmenu_button.theme = args.theme;
-    elem->data.contextmenu_button.text = args.text;
-    elem->data.contextmenu_button.image = args.image;
-    elem->data.contextmenu_button.hotkey = args.hotkey;
-    elem->data.contextmenu_button.OnUnclick = args.on_unclick;
-    elem->data.contextmenu_button.OnMousehover = args.on_mousehover;
+    auto& data = elem->data.contextmenu_button;
+    data.theme = args.theme;
+    data.text = args.text;
+    data.image = args.image;
+    data.right_image = args.right_image;
+    data.hotkey = args.hotkey;
+    data.OnUnclick = args.on_unclick;
+    data.OnMousehover = args.on_mousehover;
 
     return elem;
 }
@@ -1356,10 +1266,11 @@ internal ui_element* Background(const background_creation_args& args)
     elem->type = ui_type::background;
     elem->placement = { 0 };
     elem->child = args.child;
-    elem->data.background.theme = args.theme;
-    elem->data.background.OnClick = args.on_click;
-    elem->data.background.OnDoubleClick = args.on_doubleclick;
-    elem->data.background.OnUnRClick = args.on_unrclick;
+    auto& data = elem->data.background;
+    data.theme = args.theme;
+    data.OnClick = args.on_click;
+    data.OnDoubleClick = args.on_doubleclick;
+    data.OnUnRClick = args.on_unrclick;
 
     return elem;
 }
@@ -1377,8 +1288,9 @@ internal ui_element* Slider(const slider_creation_args& args)
     elem->type = ui_type::slider;
     elem->placement = { 0 };
     elem->child = args.child;
-    elem->data.slider.theme = args.theme;
-    elem->data.slider.value = args.value;
+    auto& data = elem->data.slider;
+    data.theme = args.theme;
+    data.value = args.value;
 
     return elem;
 }
@@ -1424,15 +1336,16 @@ internal ui_element* Hotkey(const hotkey_creation_args& args)
     elem->placement = { 0 };
     elem->cursor = args.cursor;
     elem->child = args.child;
-    elem->data.hotkey.theme = args.theme;
-    elem->data.hotkey.on_hotkey = args.on_hotkey;
-    elem->data.hotkey.placeholder_text = args.placeholder_text;
-    elem->data.hotkey.string_state = hotkey_string_state::placeholder;
+    auto& data = elem->data.hotkey;
+    data.theme = args.theme;
+    data.on_hotkey = args.on_hotkey;
+    data.placeholder_text = args.placeholder_text;
+    data.string_state = hotkey_string_state::placeholder;
 
     local_persistence i32 hotkey_id = 1; //NOTE(fran): id 0 is invalid
-    elem->data.hotkey.current_hotkey.id = hotkey_id++;
+    data.current_hotkey.id = hotkey_id++;
     assert(hotkey_id <= ArrayCount(ui_state::global_registered_hotkeys));
-    elem->data.hotkey.current_hotkey.hk = args.hotkey_value;//TODO(fran): start with a hotkey and try to register it
+    data.current_hotkey.hk = args.hotkey_value;//TODO(fran): start with a hotkey and try to register it
 
     return elem;
 }
@@ -1720,6 +1633,8 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, ui_input* 
 
 #endif
         //TODO(fran): later on we'd want more control over the cursor, probably to be handled on the on_mouseover action of each element
+
+        ui->mousehovertime = next_hot->mousehovertime;
     }
 
     ui->under_the_mouse = next_hot; //TODO(fran): we should set this guy to interaction_state::mouseover if it's valid
@@ -1750,6 +1665,13 @@ internal void UpdateUnderTheMouse(ui_state* ui, ui_element* next_hot, ui_input* 
                     safe_call(data.OnUnRClick.action, ui->under_the_mouse, data.OnUnRClick.context);
 
             } break;
+        }
+
+        ui->mousehovertime -= ui->input.dt;
+        if (ui->mousehovertime < 0 && element->OnMousehover.action)
+        {
+            ui->mousehovertime = F32MAX; //TODO(fran): quick HACK to avoid re-calling OnMousehover every frame after the first time
+            element->OnMousehover.action(element, element->OnMousehover.context); //TODO(fran): use safe_call?
         }
     }
 }
@@ -2003,6 +1925,8 @@ internal void RenderImage(iu::ui_renderer* r, ui_image image, rc2 placement, v4 
 
 internal void RenderElement(ui_state* ui, ui_element* element) 
 {
+    TIMEDFUNCTION(); //TODO(fran): since this function is called recursively time values get added on top of each other rendering a completely wrong result. We could put TIMEDFUNCTION() in each case of the switch statement that doesnt involve recursion
+    //TODO(fran): OPTIMIZE: this is really slow, taking multiple ms per frame!
     //TODO(fran): get rid of the recursion
     //TODO(fran): translation transformation before going to the render code, in order to not have to correct for the xy position (renderer->SetTransform), we gonna need to create two rc2s for each element so we can have both the transformed and non transformed rect
     while (element) //TODO(fran): should this while loop be here or in RendererDraw?
@@ -2014,6 +1938,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         {
         case ui_type::button:
         {
+            TIMEDBLOCK(RenderElement::Button);
+
             auto data = element->data.button;
 
             auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
@@ -2033,6 +1959,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         } break;
         case ui_type::slider:
         {
+            TIMEDBLOCK(RenderElement::Slider);
+
             auto& data = element->data.slider;
 
             auto [track_empty_color, track_fill_color, thumb_color] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
@@ -2063,13 +1991,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             
             rc2 _aura_rect = element->placement;// inflate_rc(element->placement, 1);
 
-            #if 1
             f32 linewidth = (element == ui->under_the_mouse) ? 3 : 1; //TODO(fran): this dont work, we need to implement reverse traversal in order to find the sizer that directly controls the under the mouse element
             RectangleOutline(r, _aura_rect, linewidth, bk_color);
-            #else
-            Rectangle(r, element->placement, bk_color);
-            Rectangle(r, _aura_rect, aura_col);
-            #endif
 #endif
             ui_sizer_element* superchild = data.childs;
             while (superchild) {
@@ -2134,6 +2057,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         case ui_type::vpad:
         {
 #ifdef DEBUG_BUILD
+            TIMEDBLOCK(RenderElement::Pad);
+
             v4 bk_color = { .9f,.2f,.1f,7.f };
 
             f32 line_width = 1;
@@ -2151,6 +2076,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         } break;
         case ui_type::hotkey:
         {
+            TIMEDBLOCK(RenderElement::Hotkey);
+
             auto data = element->data.hotkey;
 
             auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st, data.string_state);
@@ -2190,6 +2117,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         } break;
         case ui_type::background:
         {
+            TIMEDBLOCK(RenderElement::Background);
+
             auto data = element->data.background;
 
             auto [bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
@@ -2198,6 +2127,8 @@ internal void RenderElement(ui_state* ui, ui_element* element)
         } break;
         case ui_type::contextmenu_button:
         {
+            TIMEDBLOCK(RenderElement::ContextMenuButton);
+
             auto data = element->data.contextmenu_button;
 
             auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
@@ -2222,16 +2153,83 @@ internal void RenderElement(ui_state* ui, ui_element* element)
             };
             rc2 text_output_rc = RenderText(r, font, text.chars, text.cnt, fg, text_placement, horz_text_align::left, vert_text_align::center, true, true);
 
+            rc2 right_img_placement = img_placement; //TODO(fran): this should go after the hotkey rendering
+            right_img_placement.x = element->placement.right() - right_img_placement.w - avgchar.w;
+            rc2 right_img_bounds = scalefromcenter_rc(right_img_placement, data.right_image.bounds.scale_factor);
+            RenderImage(r, data.right_image, right_img_bounds, fg);
+
             rc2 hotkey_text_placement =
             {
                 .x = text_output_rc.right(),
                 .y = element->placement.y,
-                .w = distance(element->placement.right(), hotkey_text_placement.x) - avgchar.w,
+                .w = distance(right_img_placement.x, hotkey_text_placement.x) - avgchar.w*2,
                 .h = element->placement.h
             };
             s8 hotkey = stack_s(decltype(hotkey), 100);
             OS::HotkeyToString(data.hotkey, &hotkey);
             RenderText(r, font, hotkey.chars, hotkey.cnt, fg, hotkey_text_placement, horz_text_align::right, vert_text_align::center, true); //TODO(fran): on Windows horizontal alignment should actually be left aligned & placed after the longest text element in the context menu
+
+
+        } break;
+        case ui_type::timetable:
+        {
+            TIMEDBLOCK(RenderElement::TimeTable);
+            //TODO(fran): this is currently the slowest thing by far, start by chaching the brushes in the directx code
+
+            auto data = element->data.timetable;
+
+            auto [fg, bk, bd] = GetColorsForInteractionState(&data.theme->color, element->interaction_st);
+            assert(data.theme->dimension.border_thickness == 0);
+            //RenderBackground(r, element, bk, data.theme->style);
+
+            s8 text{};
+            u32 max = 0;
+            for (auto& e : (*data.timetable)->fast_table) { if (e->name.cnt > max) { max = e->name.cnt; text = e->name; } }
+            sz2 namewh = MeasureText(font, text.chars, text.cnt, { 0,0,F32MAX,F32MAX }, horz_text_align::left, vert_text_align::top).wh;
+            f32 namew = namewh.w + MeasureAverageTextCharacter(font).w*2 /*NOTE(fran): correction since Directwrite sucks*/;
+            f32 texth = namewh.h;
+            f32 timew = MeasureText(font, const_temp_s(u8"1111.11ms"), {0,0,F32MAX,F32MAX}, horz_text_align::left, vert_text_align::top).w;
+            f32 cntw = MeasureText(font, const_temp_s(u8"111111calls"), { 0,0,F32MAX,F32MAX }, horz_text_align::left, vert_text_align::top).w;
+
+            rc2 name_placement =
+            {
+                .x = element->placement.x,
+                .y = element->placement.y,
+                .w = namew,
+                .h = texth
+            };
+            rc2 time_placement =
+            {
+                .x = name_placement.right(),
+                .y = name_placement.y,
+                .w = timew,
+                .h = texth
+            };
+            rc2 cnt_placement =
+            {
+                .x = time_placement.right(),
+                .y = name_placement.y,
+                .w = cntw,
+                .h = texth
+            };
+
+            RenderText(r, font, const_temp_s(u8"Function"), fg, name_placement, horz_text_align::left, vert_text_align::center, true);
+            RenderText(r, font, const_temp_s(u8"Elapsed"), fg, time_placement, horz_text_align::right, vert_text_align::center, true);
+            RenderText(r, font, const_temp_s(u8"Call count"), fg, cnt_placement, horz_text_align::right, vert_text_align::center, true);
+            name_placement.y = time_placement.y = cnt_placement.y += texth;
+
+            auto arena = &ui->LanguageManager->temp_string_arena;
+            for (auto& e : (*data.timetable)->fast_table)
+            {
+                //TODO(fran): I would image it's preferable to make one single call to RenderText with all the text (all lines at the same time) (or if formatting alignment is too hard at least render each whole column at once)
+                RenderText(r, font, e->name.chars, e->name.cnt, fg, name_placement, horz_text_align::left, vert_text_align::center, true);
+                RenderText(r, font, s8_fmt(const_temp_s(u8"{:.2f}ms"), &e->t).generate_string(arena) /*TODO(fran): in place formatting without having to create the whole object*/, fg, time_placement, horz_text_align::right, vert_text_align::center, true);
+                RenderText(r, font, s8_fmt(const_temp_s(u8"{}calls"), &e->cnt).generate_string(arena), fg, cnt_placement, horz_text_align::right, vert_text_align::center, true);
+
+                //TODO(fran): RenderText without word wrapping, put ellipsis if it goes beyond the boundaries
+
+                name_placement.y = time_placement.y = cnt_placement.y += texth;
+            }
 
         } break;
         default: crash();
@@ -2261,8 +2259,11 @@ internal void RenderUI(ui_state* ui)
     TIMEDFUNCTION();
     BeginRender(&ui->renderer, ui->placement.wh);
     
-    for(auto& layer : ui->element_layers)
-        RenderElement(ui, layer);
+    {
+        TIMEDBLOCK(JustRender);
+        for(auto& layer : ui->element_layers)
+            RenderElement(ui, layer);
+    }
 
     if constexpr (const b32 render_mouse = false; render_mouse) TESTRenderMouse(&ui->renderer, ui->input.mouseP);
 
@@ -2278,16 +2279,24 @@ struct measure_res {
 internal measure_res MeasureElementText(ui_state* ui, ui_element* elem)
 {
     measure_res res;
+
     s8 text;
+#define _default_measurement(text) MeasureText(ui->renderer.renderer2D.font, text.chars, text.cnt, { 0,0,F32MAX,F32MAX }, horz_text_align::left, vert_text_align::top).wh
+    //NOTE(fran): when text.cnt is 0 MeasureText still returns the text height for one line of text. I'd think we probably want a special condition that says if (text.cnt == 0) measurement.wh = {0,0} but currently we are actually taking advantage of this text height to resize font height dependent vertical constraint sizers
+
+    res.metrics.avgchar = MeasureAverageTextCharacter(ui->renderer.renderer2D.font);
+
     switch (elem->type)
     {
         case ui_type::button:
         {
             text = GetUIStringStr(ui, elem->data.button.text);
+            res.measurement = _default_measurement(text);
         } break;
         case ui_type::sizer:
         {
-            text = const_temp_s(u8"");
+            text = const_temp_s(u8""); //TODO(fran): cant we simply do: 'text = {};' ?
+            res.measurement = _default_measurement(text);
         } break;
         case ui_type::contextmenu_button:
         {
@@ -2298,15 +2307,23 @@ internal measure_res MeasureElementText(ui_state* ui, ui_element* elem)
             text += u8"____"; //space for the icon
             text += GetUIStringStr(ui, data.text);
             OS::HotkeyToString(data.hotkey, &text);
+            res.measurement = _default_measurement(text);
+        } break;
+        case ui_type::timetable:
+        {
+            auto& data = elem->data.timetable;
+
+            text = {};
+            u32 max = 0;
+            for (auto& e : (*data.timetable)->fast_table) { if (e->name.cnt > max) { max = e->name.cnt; text = e->name; } } //TODO(fran): this is a bit of a HACK, though it'll probably work most times
+            res.measurement.w = _default_measurement(text).w + res.metrics.avgchar.w /*NOTE(fran): correction since directwrite sucks hard*/;
+            res.measurement.h = ((*data.timetable)->fast_table.cnt+1) * res.metrics.avgchar.h;//TODO(fran): add spacing between lines //NOTE(fran): +1 to account for titles
         } break;
         default: { crash(); } break;
     }
+#undef _default_measurement
 
-    //NOTE(fran): when text.cnt is 0 MeasureText still returns the text height for one line of text. I'd think we probably want a special condition that says if (text.cnt == 0) measurement.wh = {0,0} but currently we are actually taking advantage of this text height to resize font height dependent vertical constraint sizers
 
-    res.measurement = MeasureText(ui->renderer.renderer2D.font, text.chars, text.cnt, { 0,0,F32MAX,F32MAX }, horz_text_align::left, vert_text_align::top).wh;
-
-    res.metrics.avgchar = MeasureAverageTextCharacter(ui->renderer.renderer2D.font);
     return res;
 }
 
@@ -2675,7 +2692,7 @@ internal v2 GetElementBottomRight(ui_state* ui, const rc2 bounds, ui_element* el
                         {
                             auto& child_data = child->data.contextmenu_button;
 
-                            ui_subelement subelems[] = { SubE(child_data.image), SubE(child_data.text), SubE(child_data.hotkey) };
+                            ui_subelement subelems[] = { SubE(child_data.image), SubE(child_data.text), SubE(child_data.hotkey), SubE(child_data.right_image)};
                             assert(ArrayCount(subelems) <= columns.cnt);
 
                             for (u32 i = 0; i < ArrayCount(subelems); i++)
@@ -3263,7 +3280,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
 
         ui_image close_img =
         {
-            .type = ui_image_type::render_commands, //TODO(fran): this looks like a good case to use a _mask_
+            .type = ui_image_type::render_commands, //TODO(fran): this looks like a good oportunity to use a _mask_
             .bounds = {.scale_factor = contextmenu_imgbounds_scale_factor},
             .render_commands = {.commands = UI_IMAGE_RENDERCOMANDS_LAMBDA{
                 f32 l = minimum(placement.w, placement.h);
@@ -3282,6 +3299,28 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
                 //renderer2D->FillGeometry()
                 Line(r, p1, p2, line_width, col);
                 Line(r, p3, p4, line_width, col);
+            }},
+        };
+
+        ui_image right_arrow_img =
+        {
+            .type = ui_image_type::render_commands, //TODO(fran): this looks like a good oportunity to use a _mask_
+            .bounds = {.scale_factor = contextmenu_imgbounds_scale_factor},
+            .render_commands = {.commands = UI_IMAGE_RENDERCOMANDS_LAMBDA{
+                f32 l = minimum(placement.w, placement.h);
+                rc2 square = get_centered_rc(placement, l, l);
+
+                auto oldantialias_mode = SetAntialiasing(r, AA::on); defer{ SetAntialiasing(r, oldantialias_mode); };
+
+                v2 p1 = square.xy;
+                v2 p2 = {square.right(), square.centerY()};
+                v2 p3 = square.bottom_left();
+
+                p1 = round(p1);
+                p2 = round(p2);
+                p3 = round(p3);
+
+                Triangle(r, p1, p2, p3, col);
             }},
         };
 
@@ -3306,21 +3345,23 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
 
         ui_cursor Hand = {.type = ui_cursor_type::os, .os_cursor = OS::cursor_style::hand };
 
-        ui->context_menu->element_layers += SubelementTable(arena, 3,
+        ui->context_menu->element_layers += SubelementTable(arena, 4,
             //TODO(fran): disable Restore when not maximized & Move,Size,Maximize when maximized
             {
-                .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}},
+                .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}},
                 .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image = restore_img, .text = {.type = ui_string_type::id, .str_id = 1}, .on_unclick = {.context = ui, .action = common_ui_actions::MaximizeOrRestore})
             },
-            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::id, .str_id = 2}, .on_unclick = {.context = ui, .action = KeyboardMove})
+            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::id, .str_id = 2}, .on_unclick = {.context = ui, .action = KeyboardMove})
             },
-            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::id, .str_id = 3}, .on_unclick = {.context = ui, .action = KeyboardSize})
+            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::id, .str_id = 3}, .on_unclick = {.context = ui, .action = KeyboardSize})
             },
-            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image = minimize_img, .text = {.type = ui_string_type::id, .str_id = 4}, .on_unclick = {.context = ui, .action = common_ui_actions::MinimizeOrRestore})
+            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image = minimize_img, .text = {.type = ui_string_type::id, .str_id = 4}, .on_unclick = {.context = ui, .action = common_ui_actions::MinimizeOrRestore})
             },
-            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image = maximize_img, .text = {.type = ui_string_type::id, .str_id = 5}, .on_unclick = {.context = ui, .action = common_ui_actions::MaximizeOrRestore})
+            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image = maximize_img, .text = {.type = ui_string_type::id, .str_id = 5}, .on_unclick = {.context = ui, .action = common_ui_actions::MaximizeOrRestore})
             },
-            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image = close_img, .text = {.type = ui_string_type::id, .str_id = 6}, .hotkey = close_hotkey, .on_unclick = {.context = close, .action = common_ui_actions::B32_Set})
+            { .sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .image = close_img, .text = {.type = ui_string_type::id, .str_id = 6}, .hotkey = close_hotkey, .on_unclick = {.context = close, .action = common_ui_actions::B32_Set})
+            },
+            {.sizing = {{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz},{contextbutton_sz,contextbutton_sz}}, .element = ContextMenuButton(.arena = arena, .theme = &contextbutton_theme, .text = {.type = ui_string_type::str, .str = const_temp_s(u8"Submenu Test")}, .right_image = right_arrow_img, .on_unclick = {.context = close, .action = common_ui_actions::B32_Set})
             }
         );
 
@@ -3398,7 +3439,7 @@ internal void CreateOSUIElements(ui_state* ui, b32* close, ui_element* client_ar
 #endif
 }
 
-void PushBasicUIStatsLayer(ui_state* ui)
+internal void PushBasicUIStatsLayer(ui_state* ui)
 {
     memory_arena* arena = &ui->permanent_arena;
 
@@ -3451,6 +3492,7 @@ void PushBasicUIStatsLayer(ui_state* ui)
         { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based sizing*/,.bounds = {.scale_factor = .3f}}, .element = HSizer(arena, sizer_alignment::left,
                 {.sizing = {.type = element_sizing_type::bounds, .bounds = {.scale_factor = .2f}, } , .element = Background(.arena = arena, .theme = &test_bk_theme, /*.on_click = TODO(fran): show/hide(small height)*/
                     .child = VSizer(arena, sizer_alignment::top,
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Mousehover Time: {:.2f}ms remaining"), &ui->mousehovertime)})})},
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Input Text: {}"), &ui->input.text)})})},
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Under the Mouse: {}"), &ui->under_the_mouse) })})},
                         {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = Button(.arena = arena, .theme = &base_noneditabletext_theme, .text = {.type = ui_string_type::dynamic_str, .dyn_str = S8Fmt(arena, const_temp_s(u8"Interacting With: {}"), &ui->interacting_with) })})},

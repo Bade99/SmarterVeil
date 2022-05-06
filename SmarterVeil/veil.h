@@ -314,6 +314,97 @@ internal void ReleaseWindowsCompositor(windows_compositor* compositor)
     //TODO(fran): do I need to remove something prior to releasing?
 }
 
+struct timetable_creation_args {
+    memory_arena* arena;
+    button_theme* theme;
+    time_table** timetable;
+    ui_cursor cursor;
+    ui_action on_click;
+    ui_action on_unclick;
+    ui_action on_doubleclick;
+    ui_action on_unrclick;
+    ui_action on_mousehover; //TODO(fran): onmouseleave or onmousehoverleave
+    ui_element* child;
+};
+internal ui_element* TimeTable(const timetable_creation_args& args)
+{
+    ui_element* elem = push_type(args.arena, ui_element);
+    elem->type = ui_type::timetable;
+    elem->placement = { 0 };
+    elem->cursor = args.cursor;
+    elem->child = args.child;
+    auto& data = elem->data.timetable;
+    data.theme = args.theme;
+    data.timetable = args.timetable;
+    //data.OnClick = args.on_click;
+    //data.OnUnclick = args.on_unclick;
+    //data.OnDoubleClick = args.on_doubleclick;
+    //data.OnUnRClick = args.on_unrclick;
+
+    return elem;
+}
+#define TimeTable(...) TimeTable({__VA_ARGS__})
+
+internal void PushTimingLayer(ui_state* ui)
+{
+    memory_arena* arena = &ui->permanent_arena;
+
+    local_persistence background_theme test_bk_theme =
+    {
+        .color =
+        {
+            .background =
+            {
+                .normal = {0.2f,0.2f,0.2f,0.75f},
+                .mouseover = test_bk_theme.color.background.normal,
+                .pressed = test_bk_theme.color.background.normal,
+            },
+        },
+        .dimension =
+        {
+            .border_thickness = 0,
+        },
+        .style = ui_style::rect,
+    };
+
+    local_persistence button_theme base_noneditabletext_theme =
+    {
+        .color =
+        {
+            .foreground =
+            {
+                .normal = {1.0f,1.0f,1.0f,1.0f},
+                .mouseover = base_noneditabletext_theme.color.foreground.normal,
+                .pressed = base_noneditabletext_theme.color.foreground.normal,
+                .inactive = {0.35f,0.35f,0.4f,1.0f},
+            },
+        },
+        .dimension =
+        {
+            .border_thickness = 0,
+        },
+        .style = ui_style::round_rect,
+        .font = 0,
+    };
+
+    element_sizing_desc noneditabletext_sizing =
+    {
+        .type = element_sizing_type::font,
+        .font = {.v_scale_factor = 1.f, .w_extra_chars = 2},
+    };
+
+    ui->element_layers += VSizer(arena, sizer_alignment::top, //TODO(fran): if using bottom alignment it goes to the bottom too much, to the point that a couple of elements get clipped, we are probably wrongly taking an offset for the nonclient
+        { .sizing = {.type = element_sizing_type::os_non_client_top}, .element = VPad(arena) },
+        { .sizing = {.type = element_sizing_type::bounds /*TODO(fran): child based sizing*/,.bounds = {.scale_factor = 1.f}}, .element = HSizer(arena, sizer_alignment::right,
+                {.sizing = {.type = element_sizing_type::bounds, .bounds = {.scale_factor = .3f}, } , .element = Background(.arena = arena, .theme = &test_bk_theme, /*.on_click = TODO(fran): show/hide(small height)*/
+                    .child = VSizer(arena, sizer_alignment::top,
+                        {.sizing = noneditabletext_sizing, .element = HSizer(arena,sizer_alignment::left, {.sizing = noneditabletext_sizing, .element = TimeTable(.arena = arena, .theme = &base_noneditabletext_theme, .timetable = &OLDTIMETABLETEST)})}
+                    )
+                )}
+            )
+        });
+}
+
 internal void CreateVeilUIElements(veil_ui_state* veil_ui)
 {
     TIMEDFUNCTION();
@@ -553,9 +644,10 @@ internal void CreateVeilUIElements(veil_ui_state* veil_ui)
 
     CreateOSUIElements(veil_ui->_ui, &veil_ui->quit, layout);
 
-#ifdef DEBUG_BUILD
-    PushBasicUIStatsLayer(veil_ui->_ui);
+#ifdef DEBUG_BUILD //TODO(fran): #ifdef TESTER_BUILD or DEBUG_BUILD
+    PushBasicUIStatsLayer(veil_ui->_ui); //TODO(fran): for some reason adding this in release mode makes the langmgr temp string arena to overflow
 #endif
+    PushTimingLayer(veil_ui->_ui);
 }
 
 void CreateVeilUITray(veil_ui_state* veil_ui)
@@ -739,6 +831,8 @@ internal void VeilProcessing(veil_start_data* start_data)
     //Conclusions on the gpu spikes when hiding the veil:
     // + TODO(fran): For starters having multiple d3d devices presenting means that we are stalling execution until the next frame before we would want to, when the ui presents it stalls, then we continue to the veil, which presents too and stalls again. This ends up causing the veil to be off by a couple of frames which is very noticeable and terrible, in sharp contrast with when the veil is on its own, in which case it is unnoticeable. Should we have a different thread for each d3d presentation device?
 
+    f32 dt = .1f;
+
     while (!Veil->ui.quit)
     {
         TIMEDBLOCK(MainLoop);
@@ -753,7 +847,7 @@ internal void VeilProcessing(veil_start_data* start_data)
             DispatchMessageW(&msg);
         }
 
-        iu::UpdateAndRender();
+        iu::UpdateAndRender(dt);
 
         if (old_show_veil != Veil->ui.show_veil)
         {
@@ -771,8 +865,6 @@ internal void VeilProcessing(veil_start_data* start_data)
 
         //TODO(fran): handle rotated desktops
 
-        //TODO(fran): once I turn off my screen the veil will keep failing to get the next desktop img when the screen turns back on
-
         if (Veil->ui.show_veil) //TODO(fran): true veil processing stop, possibly requiring to release all desktop duplication objects, I dont want to simply stop calling GetNewDesktopImage because Windows will still store more update regions, idk how much extra memory that will entail (TODO(fran): check that), also (embarrassingly) we are using it as our frame timer
         {
             TIMEDBLOCK(VeilOutputToCompositor);
@@ -786,19 +878,36 @@ internal void VeilProcessing(veil_start_data* start_data)
 
             if (new_desktop_texture && !IgnoreUpdate)
             {
-                //RECT wndRc; GetClientRect(Veil->wnd, &wndRc);
                 rc2 wnd_rc = OS::GetWindowRenderRc(Veil->wnd);
 
                 RendererDraw(Veil, new_desktop_texture, wnd_rc.w, wnd_rc.h);
                 OutputToWindowsCompositor(Veil);
             }
         }
-        auto dt = TIMEREND(complete_cycle_elapsed);
+        dt = TIMEREND(complete_cycle_elapsed);
         IgnoreUpdateTimer += dt;
 
         if (!Veil->ui.show_veil && !Veil->ui._ui->render_and_update_screen /*TODO(fran): HACK: find out how to sync everything correctly*/ && dt < (f32)Veil->locking_wait_ms)
+        {
             Sleep(Veil->locking_wait_ms - (u32)dt);
+            dt = Veil->locking_wait_ms;
+        }
         //TODO(fran): if we really wanted to, after the sleep we can spinlock if our desired ms is not met
 
+        //TODO(fran): TEST code: we want to keep track of multiple frames of timings
+        auto sort_longest_elapsed = [](const void* l, const void* r) -> int
+        {
+            const timed_element** ls = (decltype(ls))l;
+            const timed_element** rs = (decltype(rs))r;
+            auto ls_elapsed = (*ls)->t;
+            auto rs_elapsed = (*rs)->t;
+            if (ls_elapsed > rs_elapsed) return -1;
+            if (ls_elapsed == rs_elapsed) return 0;
+            if (ls_elapsed < rs_elapsed) return 1;
+        };
+
+        std::swap(TIMETABLETEST, OLDTIMETABLETEST);
+        qsort(OLDTIMETABLETEST->fast_table.arr, OLDTIMETABLETEST->fast_table.cnt, sizeof(OLDTIMETABLETEST->fast_table[0]), sort_longest_elapsed);
+        zero_struct(*TIMETABLETEST);
     }
 }

@@ -48,7 +48,7 @@
     <ClInclude Include="basic_string.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="lang.h">
+    <ClInclude Include="basic_language.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="OS.h">
@@ -76,6 +76,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="iu_declaration.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="basic_array.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

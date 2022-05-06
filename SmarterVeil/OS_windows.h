@@ -1013,6 +1013,12 @@ internal f32 GetScalingForMonitor(HMONITOR monitor) //TODO(fran): OS code
 
 	}global_persistence set_sleep_resolution;
 
+	LARGE_INTEGER _QueryPerformanceFrequency()
+	{
+		LARGE_INTEGER res{};
+		QueryPerformanceFrequency(&res);//NOTE(fran): always works on Windows XP and above
+		return res;
+	}
 }
 
 //NOTE(fran): services provided by the OS to the application
@@ -1430,9 +1436,9 @@ namespace OS
 			.szTip = appnameL, //NOTE(fran): must be less than 128 chars
 			.dwState = NIS_SHAREDICON,//TODO(fran): check this
 			.dwStateMask = NIS_SHAREDICON,
-			.szInfo = 0,
+			.szInfo = {},
 			.uVersion = NOTIFYICON_VERSION_4,//INFO(fran): this changes the message format, but not when nif_showtip is enabled, I think
-			.szInfoTitle = 0,
+			.szInfoTitle = {},
 			.dwInfoFlags = NIIF_NONE,
 			//.guidItem = ,
 			.hBalloonIcon = NULL,
@@ -1575,5 +1581,24 @@ namespace OS
 	{
 		::SetForegroundWindow(wnd.hwnd);
 		//TODO(fran): the new foreground window's thread gets a little more priority from Windows, unfortunately that thread will be our io_thread which we really dont care to prioritize, we'd prefer to prioritize the main thread instead if possible
+	}
+
+	enum class counter_timescale { seconds = 1, milliseconds = 1000, microseconds = 1000000, }; //NOTE(fran): all OSes must provide the same enum names, but the values might need to be different //TODO(fran): can we provide the enum value names (seconds, milliseconds, microseconds) in the general OS .h file and modify their values in the OS specific code (seconds = 1, milliseconds = 1000, microseconds = 1000000)?
+	internal f64 GetPCFrequency(counter_timescale timescale)
+	{
+		local_persistence LARGE_INTEGER li = _OS::_QueryPerformanceFrequency(); //NOTE(fran): fixed value, can be cached
+		return f64(li.QuadPart) / (f64)timescale;
+	}
+	internal i64 StartCounter()
+	{
+		LARGE_INTEGER li;
+		::QueryPerformanceCounter(&li);
+		return li.QuadPart;
+	}
+	internal f64 EndCounter(i64 CounterStart, counter_timescale timescale = counter_timescale::milliseconds)
+	{
+		LARGE_INTEGER li;
+		::QueryPerformanceCounter(&li);
+		return double(li.QuadPart - CounterStart) / GetPCFrequency(timescale);
 	}
 }

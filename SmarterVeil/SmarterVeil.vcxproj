@@ -163,6 +163,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="assets\embedded_images.h" />
+    <ClInclude Include="basic_array.h" />
     <ClInclude Include="basic_math.h" />
     <ClInclude Include="basic_math_types.h" />
     <ClInclude Include="basic_memory.h" />
@@ -171,7 +172,7 @@
     <ClInclude Include="basic_types.h" />
     <ClInclude Include="iu_declaration.h" />
     <ClInclude Include="iu_renderer_directx11.h" />
-    <ClInclude Include="lang.h" />
+    <ClInclude Include="basic_language.h" />
     <ClInclude Include="OS_windows.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="OS.h" />

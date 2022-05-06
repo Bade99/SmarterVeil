@@ -31,6 +31,8 @@ namespace iu{
 
 //TODO(fran): there's a mix of Render... (RenderText, RenderTexture) vs the straight up name (Line, Rectangle), do one or the other but not both
 
+//TODO(fran): cache generated d3d brushes
+
 struct ui_font { //TODO(fran): no handle and simply pass in the font name & size & other props and have fonts cached so they are reused if the same set of properties was already createds
     IDWriteFactory* fontFactory;
     IDWriteTextFormat* font;
@@ -373,6 +375,7 @@ struct dwrite_flags {
 };
 internal dwrite_flags get_dwrite_flags(horz_text_align h_align, vert_text_align v_align, b32 clip_to_rect)
 {
+    //TODO(fran): word wrapping options
     dwrite_flags res;
     DWRITE_TEXT_ALIGNMENT horizontal_align_map[4]{
     DWRITE_TEXT_ALIGNMENT_LEADING,
@@ -427,6 +430,11 @@ internal rc2 MeasureText(ui_font f, const utf8* text, u32 char_cnt, rc2 text_rec
     return res;
 }
 
+internal rc2 MeasureText(ui_font f, s8 text, rc2 text_rect, horz_text_align h_align, vert_text_align v_align, b32 clip_to_rect = false)
+{
+    return MeasureText(f, text.chars, text.cnt, text_rect, h_align, v_align, clip_to_rect);
+}
+
 //TODO(fran): use pointer? ui_font*
 internal sz2 MeasureAverageTextCharacter(ui_font f)
 {
@@ -466,6 +474,10 @@ internal rc2 RenderText(ui_renderer* r, ui_font f, const utf8* text, u32 char_cn
 
     rc2 res = measure ? MeasureText(f, text, char_cnt, text_rect, h_align, v_align, clip_to_rect) : text_rect;
     return res;
+}
+internal rc2 RenderText(ui_renderer* r, ui_font f, s8 text, v4 color, rc2 text_rect, horz_text_align h_align, vert_text_align v_align, b32 clip_to_rect = false /*TODO(fran): use enum flag clip_to_rect*/, b32 measure = false /*TODO(fran): we may always want to measure*/)
+{
+    return RenderText(r, f, text.chars, text.cnt, color, text_rect, h_align, v_align, clip_to_rect, measure);
 }
 
 internal void BeginRender(ui_renderer* r, sz2 new_dims) //TODO(fran): better name
@@ -553,6 +565,58 @@ internal void Rectangle(ui_renderer* renderer, rc2 rc, f32 border_thickness, v4 
 {
     Rectangle(renderer, rc, col);
     RectangleOutline(renderer, rc, border_thickness, border_col);
+}
+
+//TODO(fran): provide a generic DrawGeometry / FillGeometry and let Iu define this special cases
+internal void Triangle(ui_renderer* renderer, v2 p1, v2 p2, v2 p3, v4 col)
+{
+    //Reference: https://docs.microsoft.com/en-us/windows/win32/direct2d/how-to-draw-and-fill-a-complex-shape
+    auto r = renderer->renderer2D.deviceContext;
+    ID2D1SolidColorBrush* br{ 0 }; defer{ d3d_SafeRelease(br); };
+    auto br_props = D2D1::BrushProperties(col.a);
+    TESTHR(r->CreateSolidColorBrush((D2D1_COLOR_F*)&col, &br_props, &br)
+        , "Failed to create Direct2D brush");
+
+    ID2D1PathGeometry* path; renderer->renderer2D.factory->CreatePathGeometry(&path); defer{ d3d_SafeRelease(path); };
+    {
+        ID2D1GeometrySink* path_elems; path->Open(&path_elems); defer{ d3d_SafeRelease(path_elems); };
+
+        path_elems->BeginFigure(v2_to_D2DPOINT(p1), D2D1_FIGURE_BEGIN_FILLED);
+        D2D1_POINT_2F lines[] = {v2_to_D2DPOINT(p2), v2_to_D2DPOINT(p3), v2_to_D2DPOINT(p1)};
+        path_elems->AddLines(lines, ArrayCount(lines));
+        path_elems->EndFigure(D2D1_FIGURE_END_CLOSED);
+
+        path_elems->Close();
+    }
+    r->FillGeometry(path, br);
+}
+
+internal void TriangleOutline(ui_renderer* renderer, v2 p1, v2 p2, v2 p3, f32 line_thickness, v4 col)
+{
+    auto r = renderer->renderer2D.deviceContext;
+    ID2D1SolidColorBrush* br{ 0 }; defer{ d3d_SafeRelease(br); };
+    auto br_props = D2D1::BrushProperties(col.a);
+    TESTHR(r->CreateSolidColorBrush((D2D1_COLOR_F*)&col, &br_props, &br)
+        , "Failed to create Direct2D brush");
+
+    ID2D1PathGeometry* path; renderer->renderer2D.factory->CreatePathGeometry(&path); defer{ d3d_SafeRelease(path); };
+    {
+        ID2D1GeometrySink* path_elems; path->Open(&path_elems); defer{ d3d_SafeRelease(path_elems); };
+
+        path_elems->BeginFigure(v2_to_D2DPOINT(p1), D2D1_FIGURE_BEGIN_FILLED);
+        D2D1_POINT_2F lines[] = { v2_to_D2DPOINT(p2), v2_to_D2DPOINT(p3), v2_to_D2DPOINT(p1) };
+        path_elems->AddLines(lines, ArrayCount(lines));
+        path_elems->EndFigure(D2D1_FIGURE_END_CLOSED);
+
+        path_elems->Close();
+    }
+    r->DrawGeometry(path, br, line_thickness, nil);
+}
+
+internal void Triangle(ui_renderer* renderer, v2 p1, v2 p2, v2 p3, f32 border_thickness, v4 col, v4 border_col)
+{
+    Triangle(renderer, p1, p2, p3, col);
+    TriangleOutline(renderer, p1, p2, p3, border_thickness, border_col);
 }
 
 internal void RoundRectangle(ui_renderer* renderer, rc2 rc, sz2 corner_radius, v4 col)
